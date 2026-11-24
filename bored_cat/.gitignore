@@ -1,0 +1,4 @@
+node_modules/
+frames/
+output/_*
+output/preview_*

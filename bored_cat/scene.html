@@ -1,0 +1,806 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:#000}
+canvas{position:absolute;left:0;top:0;width:1080px;height:1920px}
+</style></head>
+<body>
+<canvas id="gl" width="1080" height="1920"></canvas>
+<canvas id="ov" width="1080" height="1920"></canvas>
+<script src="three.min.js"></script>
+<script>
+// 《你出门，猫会无聊吗？》3D 猫咪科普短视频 —— 场景 + 字幕叠加.
+// window.renderAt(t) 确定性地渲染第 t 秒画面 (由 render.js 逐帧截图).
+"use strict";
+const W = 1080, H = 1920, FONT = '"WenQuanYi Zen Hei", sans-serif';
+const VO = window.VO || [];                      // [{start, dur}] 由 render.js 注入
+const VO_START = [1.0, 6.4, 13.5, 18.3, 24.3, 31.4];
+const SCN = [0, 6.0, 13.2, 18.0, 24.0, 31.0, 38.0];
+const SUBS = [
+  [["你出门上班的时候", 8], ["猫在家", 3], ["会不会很{无聊}？", 5]],
+  [["其实猫一天要睡", 7], ["{12~16}个小时", 8], ["你不在", 3], ["它大半时间都在{呼呼大睡}", 11]],
+  [["但要是天天一走", 7], ["就是{一整天}", 5], ["它也会{闷得发慌}", 7]],
+  [["无聊的猫", 4], ["会{乱抓沙发}", 5], ["{半夜跑酷}", 4], ["还会追着你{喵喵叫}", 8]],
+  [["出门前陪它{玩十分钟}", 9], ["把{猫爬架}放在窗边", 8], ["再{藏几颗零食}", 6]],
+  [["这样等你回家", 6], ["它才会{精神满满}地", 7], ["冲过来{迎接你}", 6]],
+];
+
+// ---------------------------------------------------------------- math
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const sm = x => { x = clamp(x); return x * x * (3 - 2 * x); };
+const lerp = (a, b, k) => a + (b - a) * k;
+const backOut = x => { x = clamp(x); const s = 1.9; return 1 + (s + 1) * (x - 1) ** 3 + s * (x - 1) ** 2; };
+function kf(t, keys) {             // keys: [[t, v]] ; v number or array
+  if (t <= keys[0][0]) return keys[0][1];
+  for (let i = 0; i < keys.length - 1; i++) {
+    const [t0, v0] = keys[i], [t1, v1] = keys[i + 1];
+    if (t <= t1) {
+      const k = sm((t - t0) / (t1 - t0));
+      return Array.isArray(v0) ? v0.map((a, j) => lerp(a, v1[j], k)) : lerp(v0, v1, k);
+    }
+  }
+  return keys[keys.length - 1][1];
+}
+function hash(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+
+// ---------------------------------------------------------------- three setup
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("gl"), antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(W, H, false);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color("#e9dcf2");
+const camera = new THREE.PerspectiveCamera(50, W / H, 0.03, 60);
+
+const hemi = new THREE.HemisphereLight("#fff4fa", "#d9b48c", 1.6);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight("#fff1dc", 2.6);
+sun.position.set(2.5, 5.5, 4);
+sun.target.position.set(0, 0, -1);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5, near: 0.5, far: 20 });
+sun.shadow.bias = -0.0006;
+sun.shadow.radius = 4;
+scene.add(sun, sun.target);
+const amb = new THREE.AmbientLight("#ffffff", 0.35);
+scene.add(amb);
+const lamp = new THREE.PointLight("#ffd9a8", 0, 6);   // 夜晚台灯
+lamp.position.set(2.2, 1.6, -1.2);
+scene.add(lamp);
+
+const matCache = {};
+function M(c, opt = {}) {
+  const key = c + JSON.stringify(opt);
+  if (!matCache[key]) matCache[key] = new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.82, metalness: 0 }, opt));
+  return matCache[key];
+}
+function box(w, h, d, c, x = 0, y = 0, z = 0, parent = scene) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), typeof c === "string" ? M(c) : c);
+  m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true;
+  parent.add(m); return m;
+}
+function cyl(rt, rb, h, c, x = 0, y = 0, z = 0, parent = scene, seg = 32) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), typeof c === "string" ? M(c) : c);
+  m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true;
+  parent.add(m); return m;
+}
+function grp(parent = scene, x = 0, y = 0, z = 0) { const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g); return g; }
+function canvasTex(w, h, draw) {
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  draw(c.getContext("2d"), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+}
+
+// ---------------------------------------------------------------- room
+const floorTex = canvasTex(1024, 1024, (g, w, h) => {
+  g.fillStyle = "#efc490"; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 8; i++) {
+    g.fillStyle = i % 2 ? "#eabd88" : "#f2c995"; g.fillRect(0, i * 128, w, 128);
+    g.fillStyle = "#d9a873"; g.fillRect(0, i * 128, w, 5);
+    const off = (i * 337) % 512;
+    g.fillRect(off, i * 128, 4, 128); g.fillRect(off + 512, i * 128, 4, 128);
+  }
+});
+floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping; floorTex.repeat.set(2, 2);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(6, 6.6), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.7 }));
+floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0, 0.3); floor.receiveShadow = true; scene.add(floor);
+const WALL = "#e6d5f1", WALL2 = "#dccaea";
+const T = 0.1, WZ = -3.05;
+box(1.3, 3, T, WALL, -2.35, 1.5, WZ);           // x -3..-1.7
+box(1.4, 0.9, T, WALL, -1.0, 0.45, WZ);         // under window
+box(1.4, 0.8, T, WALL, -1.0, 2.6, WZ);          // above window
+box(1.45, 3, T, WALL, 0.425, 1.5, WZ);          // -0.3..1.15
+box(0.9, 0.95, T, WALL, 1.6, 2.525, WZ);        // above door
+box(0.95, 3, T, WALL, 2.525, 1.5, WZ);          // 2.05..3
+box(T, 3, 6.6, WALL2, -3.05, 1.5, 0.3);         // left wall
+box(T, 3, 6.6, WALL2, 3.05, 1.5, 0.3);          // right wall
+box(6.2, T, 6.6, "#f6eefa", 0, 3.05, 0.3);      // ceiling
+box(6, 0.12, 0.03, "#ffffff", 0, 0.06, -2.99);  // skirting
+// window frame
+for (const [w, h, x, y] of [[1.5, 0.08, -1.0, 0.88], [1.5, 0.08, -1.0, 2.22], [0.08, 1.4, -1.71, 1.55], [0.08, 1.4, -0.29, 1.55], [0.05, 1.3, -1.0, 1.55], [1.4, 0.04, -1.0, 1.55]])
+  box(w, h, 0.14, "#ffffff", x, y, -3.03);
+box(1.6, 0.05, 0.25, "#ffffff", -1.0, 0.86, -2.92); // sill
+// outside: sky / sun / city
+const skyMat = new THREE.MeshBasicMaterial({ color: "#bfe0f4" });
+const sky = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 4), skyMat); sky.position.set(-1.0, 1.6, -4.2); scene.add(sky);
+const sunBall = new THREE.Mesh(new THREE.SphereGeometry(0.16, 24, 16), new THREE.MeshBasicMaterial({ color: "#fff3b0" }));
+sunBall.position.set(-0.6, 2.0, -4.1); scene.add(sunBall);
+const moon = new THREE.Mesh(new THREE.SphereGeometry(0.11, 24, 16), new THREE.MeshBasicMaterial({ color: "#fffbe6" }));
+moon.position.set(-1.35, 1.95, -4.1); moon.visible = false; scene.add(moon);
+const cityMats = ["#a8c8dc", "#9dbdd4", "#b3cfe0"].map(c => new THREE.MeshBasicMaterial({ color: c }));
+const city = [];
+for (let i = 0; i < 9; i++) {
+  const hgt = 0.5 + hash(i) * 0.8;
+  const b = new THREE.Mesh(new THREE.BoxGeometry(0.32, hgt, 0.2), cityMats[i % 3]);
+  b.position.set(-2.4 + i * 0.36, 0.55 + hgt / 2, -4.0); scene.add(b); city.push(b);
+}
+for (let i = 0; i < 4; i++) {   // trees
+  const tr = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), new THREE.MeshBasicMaterial({ color: "#9fd39a" }));
+  tr.position.set(-1.9 + i * 0.6, 0.95, -3.7); scene.add(tr); city.push(tr);
+}
+const birds = [];
+for (let i = 0; i < 3; i++) {
+  const b = grp(scene); const wm = new THREE.MeshBasicMaterial({ color: "#56607a" });
+  const l = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.012, 0.02), wm); l.position.x = -0.035; b.add(l);
+  const r = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.012, 0.02), wm); r.position.x = 0.035; b.add(r);
+  b.userData = { l, r }; b.visible = false; birds.push(b);
+}
+// door
+const hall = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.6), new THREE.MeshBasicMaterial({ color: "#fff6e4" }));
+hall.position.set(1.6, 1.3, -3.6); scene.add(hall);
+const doorPivot = grp(scene, 1.15, 0, -3.02);
+box(0.9, 2.05, 0.06, "#c98d5e", 0.45, 1.025, 0, doorPivot);
+box(0.7, 0.75, 0.02, "#b97c4f", 0.45, 1.45, 0.035, doorPivot);
+box(0.7, 0.6, 0.02, "#b97c4f", 0.45, 0.5, 0.035, doorPivot);
+cyl(0.03, 0.03, 0.04, "#f1d27a", 0.8, 1.0, 0.05, doorPivot).rotation.x = Math.PI / 2;
+for (const [w, h, x, y] of [[0.06, 2.1, 1.12, 1.05], [0.06, 2.1, 2.08, 1.05], [1.02, 0.06, 1.6, 2.08]]) box(w, h, 0.12, "#ffffff", x, y, -3.02);
+const mat = cyl(0.42, 0.42, 0.01, "#9fc7a8", 1.6, 0.005, -2.4); mat.scale.z = 0.6;
+// rug
+cyl(1.15, 1.15, 0.01, "#fbe7a8", 0.3, 0.006, -0.5, scene, 48);
+cyl(0.95, 0.95, 0.012, "#f7dc8f", 0.3, 0.007, -0.5, scene, 48);
+// sofa (left wall)
+const SOFA = "#7cb48f", SOFA_D = "#69a07c";
+box(0.9, 0.42, 2.0, SOFA_D, -2.55, 0.21, -0.6);
+box(0.8, 0.12, 0.9, SOFA, -2.5, 0.48, -1.07); box(0.8, 0.12, 0.9, SOFA, -2.5, 0.48, -0.13);
+box(0.2, 0.62, 2.0, SOFA_D, -2.9, 0.75, -0.6);
+box(0.9, 0.7, 0.18, SOFA, -2.55, 0.35, -1.51); box(0.9, 0.7, 0.18, SOFA, -2.55, 0.35, 0.31);
+box(0.12, 0.32, 0.32, "#f6b6c8", -2.72, 0.7, -1.15).rotation.z = -0.2;
+// scratch marks on sofa arm front
+const scratchTex = canvasTex(256, 256, (g) => {
+  g.strokeStyle = "#3f6e50"; g.lineWidth = 12; g.lineCap = "round";
+  for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(50 + i * 45, 30); g.bezierCurveTo(60 + i * 45, 110, 40 + i * 45, 170, 55 + i * 45, 230); g.stroke(); }
+});
+const scratchMat = new THREE.MeshBasicMaterial({ map: scratchTex, transparent: true, opacity: 0 });
+const scratch = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34), scratchMat);
+scratch.position.set(-2.56, 0.42, 0.405); scene.add(scratch);
+// cabinet under window
+box(1.2, 0.6, 0.45, "#f8efe4", -1.0, 0.3, -2.77);
+box(0.56, 0.48, 0.02, "#eee0cf", -1.3, 0.3, -2.54); box(0.56, 0.48, 0.02, "#eee0cf", -0.7, 0.3, -2.54);
+// cat bed
+const bed = grp(scene, 0.75, 0, -1.25);
+cyl(0.4, 0.42, 0.1, "#c9b2e6", 0, 0.05, 0, bed);
+const rim = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.07, 12, 40), M("#d8c3f0"));
+rim.rotation.x = Math.PI / 2; rim.position.y = 0.11; rim.castShadow = rim.receiveShadow = true; bed.add(rim);
+// wall clock
+const clock = grp(scene, 0.45, 2.15, -2.98);
+cyl(0.22, 0.22, 0.05, "#ffffff", 0, 0, 0, clock).rotation.x = Math.PI / 2;
+const crim = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.025, 10, 40), M("#f08cae")); crim.position.z = 0.02; clock.add(crim);
+for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; box(0.02, 0.04, 0.01, "#666", Math.sin(a) * 0.17, Math.cos(a) * 0.17, 0.03, clock).rotation.z = -a; }
+const hourHand = grp(clock, 0, 0, 0.04), minHand = grp(clock, 0, 0, 0.05);
+box(0.025, 0.1, 0.01, "#333", 0, 0.05, 0, hourHand); box(0.016, 0.15, 0.01, "#333", 0, 0.075, 0, minHand);
+// plant + lamp
+cyl(0.16, 0.12, 0.3, "#f2a07b", 2.55, 0.15, -2.55);
+const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.8, 7), M("#7fbf7a")); leaf.position.set(2.55, 0.7, -2.55); leaf.castShadow = true; scene.add(leaf);
+cyl(0.03, 0.03, 1.4, "#ddd", 2.55, 0.7, -1.2); cyl(0.12, 0.2, 0.22, "#fff2cf", 2.55, 1.45, -1.2);
+// picture frames
+box(0.5, 0.38, 0.03, "#ffffff", -2.4, 2.0, -2.98); box(0.42, 0.3, 0.035, "#ffd0dc", -2.4, 2.0, -2.98);
+// cat tree (pops in during tips)
+const tree = grp(scene, -2.25, 0, -2.4);
+box(0.7, 0.08, 0.7, "#f6d9e2", 0, 0.04, 0, tree);
+cyl(0.07, 0.07, 1.25, "#d9b783", 0, 0.66, 0, tree, 16);
+for (let i = 0; i < 9; i++) cyl(0.075, 0.075, 0.012, "#c39e68", 0, 0.12 + i * 0.13, 0, tree, 16);
+box(0.5, 0.06, 0.5, "#f6d9e2", 0.12, 0.62, 0.05, tree);
+box(0.6, 0.07, 0.6, "#f6d9e2", 0, 1.3, 0, tree);
+const toyBall = new THREE.Mesh(new THREE.SphereGeometry(0.045, 16, 12), M("#ffcf4d")); toyBall.position.set(0.3, 0.48, 0.25); tree.add(toyBall);
+cyl(0.004, 0.004, 0.12, "#999", 0.3, 0.56, 0.25, tree, 6);
+tree.visible = false;
+// treats
+const treats = [];
+for (const p of [[0.35, 0.03, -0.55], [-0.95, 0.63, -2.7], [1.9, 0.03, -0.3]]) {
+  const t = box(0.055, 0.04, 0.055, "#b86b3d", ...p); t.visible = false; treats.push(t);
+}
+
+// ---------------------------------------------------------------- cat (pink cube cat)
+const CC = { body: "#f7b5ca", head: "#f9c3d4", ear: "#ee86a7", earIn: "#fbc6d6", eye: "#141414", cheek: "#f27ba0", nose: "#ee6c8f", muzzle: "#f6b3a2", spot: "#e48fb0", paw: "#fbd2df" };
+function makeCat() {
+  const root = grp(scene);
+  const pivot = grp(root, 0, 0.07, -0.15);           // rear-up pivot at hind legs
+  const inner = grp(pivot, 0, -0.07, 0.15);
+  const body = box(0.36, 0.3, 0.4, CC.body, 0, 0.22, 0, inner);
+  for (const [x, y, r] of [[-0.08, 0.2, 0.04], [0.06, 0.26, 0.055], [0.11, 0.14, 0.035], [-0.01, 0.11, 0.025]]) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.007, 6, 24), M(CC.spot)); ring.position.set(x, y, 0.202); inner.add(ring);
+  }
+  for (const s of [-1, 1]) for (const [z, y, r] of [[0.05, 0.25, 0.05], [-0.1, 0.17, 0.035]]) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.007, 6, 24), M(CC.spot)); ring.position.set(s * 0.182, y, z); ring.rotation.y = Math.PI / 2; inner.add(ring);
+  }
+  const legs = [];
+  for (const [x, z] of [[-0.11, 0.14], [0.11, 0.14], [-0.11, -0.14], [0.11, -0.14]]) {
+    const g = grp(inner, x, 0.1, z);
+    box(0.1, 0.1, 0.1, CC.paw, 0, -0.05, 0.005, g);
+    legs.push(g);
+  }
+  const tailBase = grp(inner, 0, 0.2, -0.2);
+  const tail = []; let par = tailBase;
+  for (let i = 0; i < 5; i++) {
+    const g = grp(par, 0, i === 0 ? 0 : 0.075, 0);
+    box(0.06, 0.08, 0.06, i === 4 ? CC.ear : CC.body, 0, 0.04, 0, g);
+    tail.push(g); par = g;
+  }
+  const headG = grp(inner, 0, 0.37, 0.05);
+  const head = box(0.46, 0.32, 0.36, CC.head, 0, 0.16, 0, headG);
+  const face = grp(headG, 0, 0, 0.181);
+  const eyes = [];
+  for (const s of [-1, 1]) {
+    const e = grp(face, s * 0.1, 0.19, 0);
+    box(0.105, 0.115, 0.012, CC.eye, 0, 0, 0, e);
+    const h1 = box(0.036, 0.036, 0.01, "#ffffff", -0.022, 0.025, 0.008, e);
+    const h2 = box(0.022, 0.022, 0.01, "#ffffff", 0.025, -0.03, 0.008, e);
+    h1.castShadow = h2.castShadow = false;
+    eyes.push({ g: e, hl: [h1, h2] });
+  }
+  for (const s of [-1, 1]) box(0.06, 0.032, 0.008, CC.cheek, s * 0.165, 0.085, 0, face);
+  box(0.05, 0.028, 0.012, CC.nose, 0, 0.105, 0.002, face);
+  const muzzle = box(0.13, 0.048, 0.008, CC.muzzle, 0, 0.068, 0, face);
+  const mouth = box(0.05, 0.05, 0.01, "#8e2f52", 0, 0.05, 0.004, face); mouth.scale.y = 0.01;
+  const ears = [];
+  for (const s of [-1, 1]) {
+    const eg = grp(headG, s * 0.14, 0.32, 0);
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.085, 0.17, 4), M(CC.ear)); ear.rotation.y = Math.PI / 4; ear.position.y = 0.085; ear.castShadow = true; eg.add(ear);
+    const ein = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.11, 4), M(CC.earIn)); ein.rotation.y = Math.PI / 4; ein.position.set(0, 0.06, 0.04); eg.add(ein);
+    ears.push(eg);
+  }
+  return { root, pivot, inner, body, legs, tailBase, tail, headG, eyes, mouth, ears };
+}
+const cat = makeCat();
+function catPose(p) {
+  const c = cat, t = p.t || 0;
+  c.root.position.set(p.x || 0, p.y || 0, p.z || 0);
+  c.root.rotation.set(0, p.ry || 0, 0);
+  c.root.scale.setScalar(p.s || 1);
+  c.pivot.rotation.x = -(p.rear || 0);
+  c.inner.rotation.set(p.tilt || 0, 0, p.roll || 0);
+  const breath = 1 + 0.015 * Math.sin(t * 2 * Math.PI / (p.lie ? 3.2 : 2.6));
+  c.inner.scale.set(1, (p.lie ? 0.78 : 1) * breath, 1);
+  c.inner.position.y = -0.07 + (p.bob || 0) - (p.lie ? 0.07 : 0);
+  c.headG.position.set(0, p.lie ? 0.33 : 0.37, p.lie ? 0.1 : 0.05);
+  c.headG.rotation.set(p.pitch || 0, p.yaw || 0, p.headRoll || 0);
+  for (const l of c.legs) { l.visible = !p.lie; l.rotation.set(0, 0, 0); }
+  if (p.walk) {
+    const ph = p.walk, a = p.walkAmp || 0.6;
+    c.legs[0].rotation.x = Math.sin(ph) * a; c.legs[3].rotation.x = Math.sin(ph) * a;
+    c.legs[1].rotation.x = -Math.sin(ph) * a; c.legs[2].rotation.x = -Math.sin(ph) * a;
+  }
+  if (p.paws) { c.legs[0].rotation.x = p.paws[0]; c.legs[1].rotation.x = p.paws[1]; }
+  const wag = p.tailWag === undefined ? 0.25 : p.tailWag, sp = p.tailSpeed || 1.2;
+  c.tailBase.rotation.set(p.lie ? -1.5 : -0.5, p.lie ? 0.9 : 0, 0);
+  c.tail.forEach((g, i) => { if (i) g.rotation.set(p.lie ? 0 : -0.18, p.lie ? 0.35 : 0, Math.sin(t * sp * 2 * Math.PI - i * 0.7) * wag * (0.5 + i * 0.25)); });
+  // eyes
+  const mode = p.eyes || "open";
+  const blink = mode === "open" && ((t + (p.blinkOff || 0)) % 3.3) < 0.12;
+  for (const e of c.eyes) {
+    const shut = mode === "closed" || mode === "happy" || blink;
+    e.g.scale.y = shut ? 0.14 : mode === "half" ? 0.5 : mode === "big" ? 1.15 : 1;
+    e.g.scale.x = mode === "big" ? 1.1 : 1;
+    e.g.position.y = mode === "half" ? 0.165 : 0.19;
+    e.g.rotation.z = 0;
+    e.hl.forEach(h => h.visible = !shut);
+  }
+  if (mode === "happy") { c.eyes[0].g.rotation.z = 0.35; c.eyes[1].g.rotation.z = -0.35; }
+  c.mouth.scale.y = Math.max(0.01, p.mouth || 0);
+  const ed = p.earDroop || 0;
+  c.ears[0].rotation.z = 0.15 + ed; c.ears[1].rotation.z = -0.15 - ed;
+}
+
+// ---------------------------------------------------------------- owner (blocky human)
+function makePerson() {
+  const root = grp(scene);
+  const P = { skin: "#f7d6bf", hair: "#5d3b2e", top: "#6fa9d8", pants: "#4b5872", shoe: "#ffffff" };
+  const legs = [], arms = [];
+  for (const s of [-1, 1]) {
+    const g = grp(root, s * 0.1, 0.8, 0);
+    box(0.15, 0.72, 0.17, P.pants, 0, -0.36, 0, g); box(0.16, 0.08, 0.24, P.shoe, 0, -0.76, 0.03, g);
+    legs.push(g);
+  }
+  box(0.44, 0.6, 0.25, P.top, 0, 1.1, 0, root);
+  for (const s of [-1, 1]) {
+    const g = grp(root, s * 0.28, 1.36, 0);
+    box(0.12, 0.5, 0.14, P.top, 0, -0.22, 0, g); box(0.1, 0.1, 0.12, P.skin, 0, -0.52, 0, g);
+    arms.push(g);
+  }
+  const headG = grp(root, 0, 1.42, 0);
+  box(0.32, 0.32, 0.3, P.skin, 0, 0.17, 0, headG);
+  box(0.35, 0.1, 0.33, P.hair, 0, 0.35, -0.01, headG); box(0.35, 0.28, 0.08, P.hair, 0, 0.2, -0.14, headG);
+  for (const s of [-1, 1]) { box(0.04, 0.05, 0.01, "#222", s * 0.07, 0.2, 0.151, headG); box(0.05, 0.02, 0.01, "#f5a3b6", s * 0.11, 0.13, 0.151, headG); }
+  const smile = box(0.07, 0.015, 0.01, "#b0485e", 0, 0.1, 0.151, headG);
+  const bag = box(0.22, 0.28, 0.1, "#f3a65a", 0.33, 0.98, 0.0, root);
+  // teaser wand in right hand
+  const wand = grp(arms[1], 0, -0.55, 0.05);
+  const stick = cyl(0.008, 0.008, 0.6, "#8a6b4e", 0, 0, 0.28, wand, 8); stick.rotation.x = Math.PI / 2;
+  const feather = grp(scene);
+  const f1 = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.16, 8), M("#ff7fa8")); f1.rotation.x = Math.PI; feather.add(f1);
+  const f2 = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 8), M("#7fd1ff")); f2.rotation.set(Math.PI, 0, 0.5); f2.position.x = 0.03; feather.add(f2);
+  const string = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 1, 4), M("#777")); scene.add(string);
+  return { root, legs, arms, headG, bag, wand, feather, string };
+}
+const man = makePerson();
+function manPose(p) {
+  man.root.visible = p.visible !== false;
+  man.root.position.set(p.x || 0, 0, p.z || 0);
+  man.root.rotation.y = p.ry || 0;
+  const ph = p.walk || 0, a = p.walk ? 0.5 : 0;
+  man.legs[0].rotation.x = Math.sin(ph) * a; man.legs[1].rotation.x = -Math.sin(ph) * a;
+  man.arms[0].rotation.set(-Math.sin(ph) * a * 0.8 + (p.armL || 0), 0, 0.05);
+  man.arms[1].rotation.set(Math.sin(ph) * a * 0.8 + (p.armR || 0), 0, -0.05);
+  man.root.position.y = p.walk ? Math.abs(Math.sin(ph)) * 0.03 : 0;
+  man.headG.rotation.x = p.headPitch || 0;
+  man.bag.visible = !!p.bag;
+  man.wand.visible = !!p.wand;
+  man.feather.visible = !!p.wand; man.string.visible = !!p.wand;
+}
+
+// ---------------------------------------------------------------- sprites
+function spriteTex(draw, w = 256, h = 256) { return canvasTex(w, h, draw); }
+function outlinedText(g, txt, x, y, size, fill, stroke, lw) {
+  g.font = `bold ${size}px ${FONT}`; g.textAlign = "center"; g.textBaseline = "middle";
+  g.lineJoin = "round"; g.lineWidth = lw; g.strokeStyle = stroke; g.strokeText(txt, x, y); g.fillStyle = fill; g.fillText(txt, x, y);
+}
+function heartPath(g, cx, cy, s) {
+  g.beginPath();
+  for (let i = 0; i <= 64; i++) {
+    const u = i / 64 * Math.PI * 2;
+    const x = cx + s * 16 * Math.sin(u) ** 3, y = cy - s * (13 * Math.cos(u) - 5 * Math.cos(2 * u) - 2 * Math.cos(3 * u) - Math.cos(4 * u));
+    i ? g.lineTo(x, y) : g.moveTo(x, y);
+  }
+  g.closePath();
+}
+const TEX = {
+  z: spriteTex(g => outlinedText(g, "Z", 128, 128, 200, "#8fb8ff", "#ffffff", 22)),
+  q: spriteTex(g => outlinedText(g, "?", 128, 128, 210, "#ff6f9c", "#ffffff", 24)),
+  ex: spriteTex(g => outlinedText(g, "!", 128, 128, 210, "#ff4f4f", "#ffffff", 24)),
+  heart: spriteTex(g => { heartPath(g, 128, 118, 6.2); g.fillStyle = "#ffffff"; g.fill(); heartPath(g, 128, 118, 5.0); g.fillStyle = "#ff5d8f"; g.fill(); }),
+  meow: spriteTex(g => {
+    g.fillStyle = "#ffffff"; g.strokeStyle = "#ff7aa2"; g.lineWidth = 10;
+    g.beginPath(); g.ellipse(256, 110, 220, 90, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(170, 185); g.lineTo(130, 245); g.lineTo(225, 195); g.fill();
+    outlinedText(g, "喵~!", 256, 112, 110, "#ff5d8f", "#ffffff", 6);
+  }, 512, 256),
+  sigh: spriteTex(g => {
+    g.fillStyle = "rgba(255,255,255,0.95)"; g.strokeStyle = "#9aa6c4"; g.lineWidth = 10;
+    g.beginPath(); g.ellipse(256, 110, 210, 88, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    for (const [x, y, r] of [[120, 210, 22], [80, 240, 13]]) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.stroke(); }
+    outlinedText(g, "好无聊…", 256, 112, 92, "#6a7697", "#ffffff", 6);
+  }, 512, 256),
+  sparkle: spriteTex(g => {
+    g.fillStyle = "#ffe066"; g.beginPath();
+    for (let i = 0; i < 8; i++) { const r = i % 2 ? 30 : 110, a = i / 8 * Math.PI * 2 - Math.PI / 2; g.lineTo(128 + r * Math.cos(a), 128 + r * Math.sin(a)); }
+    g.fill();
+  }),
+  speed: spriteTex(g => { g.strokeStyle = "rgba(255,255,255,0.9)"; g.lineWidth = 14; g.lineCap = "round"; for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(30, 60 + i * 70); g.lineTo(220 - i * 40, 60 + i * 70); g.stroke(); } }),
+};
+function mkSprite(tex, sx, sy) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  s.scale.set(sx, sy, 1); s.visible = false; s.userData.base = [sx, sy]; scene.add(s); return s;
+}
+const SP = {
+  z: [0, 1, 2].map(() => mkSprite(TEX.z, 0.16, 0.16)),
+  q: mkSprite(TEX.q, 0.22, 0.22),
+  ex: mkSprite(TEX.ex, 0.22, 0.22),
+  meow: mkSprite(TEX.meow, 0.5, 0.25),
+  sigh: mkSprite(TEX.sigh, 0.5, 0.25),
+  hearts: [0, 1, 2, 3, 4, 5].map(() => mkSprite(TEX.heart, 0.18, 0.18)),
+  sparkle: [0, 1, 2].map(() => mkSprite(TEX.sparkle, 0.1, 0.1)),
+  speed: mkSprite(TEX.speed, 0.4, 0.4),
+};
+function showSprite(s, x, y, z, k = 1, op = 1) {
+  s.visible = op > 0.01; s.position.set(x, y, z);
+  s.scale.set(s.userData.base[0] * k, s.userData.base[1] * k, 1); s.material.opacity = op;
+}
+
+// ---------------------------------------------------------------- environment presets
+const DAY = { bg: "#e9dcf2", hemiSky: "#fff4fa", hemiGround: "#d9b48c", hemiI: 1.6, sunC: "#fff1dc", sunI: 2.6, amb: 0.35, sky: "#bfe0f4", lamp: 0 };
+function setEnv(e) {
+  scene.background.set(e.bg); hemi.color.set(e.hemiSky); hemi.groundColor.set(e.hemiGround); hemi.intensity = e.hemiI;
+  sun.color.set(e.sunC); sun.intensity = e.sunI; amb.intensity = e.amb; skyMat.color.set(e.sky); lamp.intensity = e.lamp;
+}
+function mixEnv(a, b, k) {
+  const o = {};
+  for (const key in a) {
+    if (typeof a[key] === "number") o[key] = lerp(a[key], b[key], k);
+    else o[key] = "#" + new THREE.Color(a[key]).lerp(new THREE.Color(b[key]), k).getHexString();
+  }
+  return o;
+}
+const DUSK = { bg: "#e9d2dc", hemiSky: "#ffd9c9", hemiGround: "#c99a7a", hemiI: 1.3, sunC: "#ffb27a", sunI: 2.0, amb: 0.3, sky: "#f6a77f", lamp: 0 };
+const NIGHT = { bg: "#2a2c4a", hemiSky: "#6f78b8", hemiGround: "#3a3350", hemiI: 0.9, sunC: "#9fb3ff", sunI: 1.1, amb: 0.25, sky: "#26305a", lamp: 3.0 };
+
+// ---------------------------------------------------------------- scenes
+let CAMK = 1.5;
+function look(pos, tgt, fov = 50, k = CAMK) {
+  camera.position.set(tgt[0] + (pos[0] - tgt[0]) * k, tgt[1] + (pos[1] - tgt[1]) * k, tgt[2] + (pos[2] - tgt[2]) * k); camera.fov = fov; camera.updateProjectionMatrix(); camera.lookAt(...tgt);
+}
+function headTo(cx, cz, ry, tx, tz) {   // yaw needed for cat at (cx,cz) facing ry to look at (tx,tz)
+  let a = Math.atan2(tx - cx, tz - cz) - ry;
+  while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI;
+  return clamp(a, -1.2, 1.2);
+}
+function resetWorld(t) {
+  setEnv(DAY);
+  doorPivot.rotation.y = 0;
+  manPose({ visible: false });
+  for (const k in SP) (Array.isArray(SP[k]) ? SP[k] : [SP[k]]).forEach(s => s.visible = false);
+  scratchMat.opacity = 0;
+  tree.visible = t >= 26.3; tree.scale.setScalar(1);
+  treats.forEach(x => { x.visible = false; x.scale.setScalar(1); });
+  birds.forEach(b => b.visible = false);
+  moon.visible = false; sunBall.visible = true; sunBall.position.set(-0.6, 2.0, -4.1);
+  sunBall.material.color.set("#fff3b0");
+  sun.position.set(2.5, 5.5, 4);
+  // clock shows realistic time
+  const hrs = 8 + t * 0.02;
+  hourHand.rotation.z = -hrs / 12 * Math.PI * 2; minHand.rotation.z = -hrs * Math.PI * 2;
+}
+function zzz(t, x, y, z) {
+  SP.z.forEach((s, i) => {
+    const ph = ((t * 0.55 + i / 3) % 1);
+    showSprite(s, x + 0.08 * Math.sin(ph * 6 + i) + ph * 0.12, y + ph * 0.45, z, 0.6 + ph * 0.8, Math.sin(ph * Math.PI));
+  });
+}
+function hearts(t, t0, x, y, z, spread = 0.35) {
+  SP.hearts.forEach((s, i) => {
+    const ph = (t - t0 - i * 0.18);
+    if (ph < 0) return;
+    const p = (ph % 1.6) / 1.6;
+    showSprite(s, x + (hash(i) - 0.5) * spread + Math.sin(p * 5 + i) * 0.04, y + p * 0.5, z + (hash(i + 9) - 0.5) * 0.15, 0.5 + backOut(p * 3) * 0.6, Math.min(1, (1 - p) * 2.5));
+  });
+}
+
+function scene0(t) {      // 主人出门
+  // owner walks to door & leaves
+  const mx = kf(t, [[0, 1.25], [1.2, 1.6]]), mz = kf(t, [[0, -0.9], [1.2, -2.45], [2.1, -3.5]]);
+  const doorA = kf(t, [[0.9, 0], [1.3, -1.35], [2.2, -1.35], [2.7, 0]]);
+  doorPivot.rotation.y = doorA;
+  manPose({ visible: t < 2.3, x: mx, z: mz, ry: Math.PI, walk: t < 2.1 ? t * 9 : 0, bag: true, armR: t > 0.8 && t < 1.3 ? -0.8 : 0 });
+  if (t < 2.3) {    // turn back & wave on doorstep
+    const wave = t > 1.25 && t < 2.0;
+    if (wave) manPose({ visible: true, x: mx, z: mz, ry: kf(t, [[1.25, Math.PI], [1.45, 0.3], [1.85, 0.3], [2.0, Math.PI]]), walk: 0, bag: true, armR: -2.6 + 0.3 * Math.sin(t * 25) });
+  }
+  const cx = 0.35, cz = -0.25, cry = Math.PI + 0.35;
+  if (t < 3.0) {
+    const yaw = headTo(cx, cz, cry, mx, mz);
+    catPose({ t, x: cx, z: cz, ry: cry, yaw: yaw * 0.7, pitch: -0.15, tailWag: 0.4 });
+    look([kf(t, [[0, -0.75], [3, -0.55]]), 1.15, kf(t, [[0, 1.45], [3, 1.2]])], [0.9, 0.75, -2.2], 52);
+  } else {
+    const yaw = kf(t, [[3.0, 0], [4.0, 0], [4.5, -0.55]]);
+    catPose({ t, x: cx, z: cz, ry: cry, yaw, pitch: kf(t, [[3, -0.1], [4.5, 0.1]]), eyes: t > 4.3 ? "big" : "open", earDroop: kf(t, [[3.5, 0], [4.2, 0.35]]), tailWag: 0.12, blinkOff: 1.2 });
+    // camera in front of the cat (cat faces door direction)
+    const f = new THREE.Vector3(Math.sin(cry), 0, Math.cos(cry));
+    const side = new THREE.Vector3(Math.cos(cry), 0, -Math.sin(cry));
+    const d = kf(t, [[3, 1.25], [6, 0.95]]);
+    const cp = new THREE.Vector3(cx, 0, cz).addScaledVector(f, d).addScaledVector(side, -0.35);
+    look([cp.x, 0.62, cp.z], [cx + side.x * -0.08, 0.5, cz + side.z * -0.08], 45);
+    const qk = clamp((t - 4.4) / 0.3);
+    if (qk > 0) showSprite(SP.q, cx + f.x * 0.05 - side.x * 0.3, 0.98 + 0.02 * Math.sin(t * 6), cz - side.z * 0.3 + f.z * 0.05, backOut(qk), 1);
+  }
+}
+function scene1(t, lt) {   // 睡大觉
+  const k = lt / 7.2;
+  const sunA = lerp(-0.6, 0.9, k);
+  sun.position.set(5 * Math.sin(sunA), 5.5, 4 * Math.cos(sunA));
+  const hrs = 9 + k * 7;
+  hourHand.rotation.z = -hrs / 12 * Math.PI * 2; minHand.rotation.z = -hrs * Math.PI * 2;
+  catPose({ t, x: 0.75, y: 0.1, z: -1.25, ry: 0.5, lie: true, eyes: "closed", pitch: 0.18, tailWag: 0.08, tailSpeed: 0.3, roll: 0.0 });
+  zzz(t, 0.9, 0.62, -1.05);
+  if (lt < 3.4) look([kf(lt, [[0, 1.65], [3.4, 1.45]]), kf(lt, [[0, 1.75], [3.4, 1.55]]), kf(lt, [[0, 0.9], [3.4, 0.65]])], [0.55, 0.95, -1.9], 50);
+  else look([kf(lt, [[3.4, 1.15], [7.2, 1.05]]), 0.55, kf(lt, [[3.4, -0.35], [7.2, -0.5]])], [0.72, 0.3, -1.25], 42);
+}
+function scene2(t, lt) {   // 窗边发呆
+  const k = clamp(lt / 3.6);
+  setEnv(mixEnv(DAY, DUSK, k));
+  sunBall.position.set(lerp(-0.5, -1.5, k), lerp(2.0, 1.05, k), -4.1);
+  sunBall.material.color.set(new THREE.Color("#fff3b0").lerp(new THREE.Color("#ff8a5c"), k));
+  sun.position.set(lerp(2.5, -1.5, k), lerp(5.5, 2.5, k), lerp(4, 2, k));
+  const hrs = 8 + 11 * clamp(lt / 3.8);
+  hourHand.rotation.z = -hrs / 12 * Math.PI * 2; minHand.rotation.z = -hrs * Math.PI * 2;
+  if (lt < 2.6) {
+    catPose({ t, x: -1.0, y: 0.6, z: -2.75, ry: Math.PI, pitch: -0.25, tailWag: 0.35, tailSpeed: 0.5, yaw: 0.15 * Math.sin(lt * 1.3) });
+    look([kf(lt, [[0, -0.35], [2.6, -0.45]]), 1.25, kf(lt, [[0, -1.0], [2.6, -1.35]])], [-1.05, 1.15, -3.3], 50);
+  } else {
+    const yaw = kf(lt, [[2.6, 0], [3.1, 0.45]]);
+    catPose({ t, x: -1.0, y: 0.6, z: -2.75, ry: 0.15, pitch: kf(lt, [[2.6, -0.2], [3.4, 0.15]]), yaw: 0, eyes: "half", earDroop: 0.45, tailWag: 0.05, headRoll: 0.08 });
+    look([kf(lt, [[2.6, -0.75], [4.8, -0.8]]), 1.25, kf(lt, [[2.6, -1.35], [4.8, -1.6]])], [-1.0, 1.05, -2.75], 52, 1);
+    const sk = clamp((lt - 3.1) / 0.3);
+    if (false && sk > 0) showSprite(SP.sigh, -1.12, 1.6, -2.5, backOut(sk) * 0.8, 1);
+  }
+}
+function scene3(t, lt) {   // 无聊捣乱
+  if (t < 20.5) {          // 抓沙发
+    const s = (t - 18) * 7;
+    catPose({ t, x: -2.56, z: 0.47, ry: Math.PI, rear: 0.6, paws: [-1.2 + 0.5 * Math.sin(s), -1.2 + 0.5 * Math.sin(s + Math.PI)], eyes: "big", tailWag: 0.5, tailSpeed: 2, pitch: 0.25, bob: 0.01 * Math.sin(s * 2) });
+    scratchMat.opacity = clamp((t - 18.4) / 1.4);
+    look([kf(t, [[18, -0.85], [20.5, -1.0]]), 0.85, kf(t, [[18, 1.25], [20.5, 1.15]])], [-2.5, 0.5, 0.6], 58, 1);
+    showSprite(SP.ex, -2.45, 1.0, 0.75, backOut((t - 18.6) / 0.3), t > 18.6 ? 1 : 0);
+  } else if (t < 21.6) {   // 半夜跑酷
+    setEnv(NIGHT); sunBall.visible = false; moon.visible = true;
+    sun.position.set(-1.0, 3, -6);
+    const u = (t - 20.5) / 1.1;
+    const path = [[1.9, -0.2], [0.9, 0.5], [-0.2, -0.3], [0.75, -1.25], [-0.6, -1.9], [-1.6, -0.8]];
+    const fp = u * (path.length - 1), i = Math.min(path.length - 2, Math.floor(fp)), f = fp - i;
+    const [x0, z0] = path[i], [x1, z1] = path[i + 1];
+    const x = lerp(x0, x1, f), z = lerp(z0, z1, f);
+    const ry = Math.atan2(x1 - x0, z1 - z0);
+    const jump = i === 2 ? Math.sin(f * Math.PI) * 0.45 : Math.abs(Math.sin(f * Math.PI)) * 0.06;
+    catPose({ t, x, y: jump, z, ry, walk: t * 30, walkAmp: 1.0, eyes: "big", tailWag: 0.1, tilt: i === 2 ? -0.3 * Math.cos(f * Math.PI) : 0.08 });
+    showSprite(SP.speed, x - Math.sin(ry) * 0.4, 0.35 + jump, z - Math.cos(ry) * 0.4, 1, 0.8);
+    look([2.6, 2.4, 2.4], [-0.1, 0.1, -0.9], 64, 1);
+  } else {                 // 追着喵喵叫
+    const mx = kf(t, [[21.6, 0.9], [24, 1.5]]);
+    manPose({ visible: true, x: mx, z: 0.0, ry: kf(t, [[21.6, 1.6], [22.6, 1.6], [23.0, -0.6]]), walk: t < 22.8 ? t * 7 : 0, headPitch: t > 22.8 ? 0.45 : 0 });
+    const cx = kf(t, [[21.6, 0.2], [24, 0.95]]);
+    const op = Math.max(0, Math.sin((t - 21.7) * 2 * Math.PI / 0.9));
+    catPose({ t, x: cx, z: 0.3, ry: 1.2, walk: t < 22.8 ? t * 12 : 0, yaw: 0.2, pitch: -0.35, mouth: op, eyes: "big", tailWag: 0.5, tailSpeed: 2.2 });
+    showSprite(SP.meow, cx - 0.15, 0.95, 0.55, 0.85 + op * 0.25, t > 21.8 ? 1 : 0);
+    look([kf(t, [[21.6, 0.2], [24, 0.6]]), 0.65, 2.0], [kf(t, [[21.6, 0.5], [24, 1.0]]), 0.6, 0.1], 50);
+  }
+}
+function featherPos(t) {
+  return [-0.15 + 0.22 * Math.sin(t * 3.1), 0.42 + 0.18 * Math.sin(t * 5.3), 0.25 + 0.15 * Math.cos(t * 3.1)];
+}
+function scene4(t, lt) {   // 小妙招
+  if (t < 26.3) {          // 逗猫棒
+    manPose({ visible: true, x: 0.75, z: 0.35, ry: -1.35, wand: true, armR: -0.9 + 0.12 * Math.sin(t * 4), armL: 0, headPitch: 0.35 });
+    man.root.updateMatrixWorld(true);
+    const tip = new THREE.Vector3(0, -0.012, 0.58); man.wand.localToWorld(tip);
+    const fp = featherPos(t);
+    man.feather.position.set(...fp);
+    const mid = new THREE.Vector3((tip.x + fp[0]) / 2, (tip.y + fp[1] + 0.08) / 2, (tip.z + fp[2]) / 2);
+    man.string.position.copy(mid);
+    const dir = new THREE.Vector3(tip.x - fp[0], tip.y - fp[1] - 0.08, tip.z - fp[2]);
+    man.string.scale.y = dir.length(); man.string.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+    const jp = Math.max(0, Math.sin((t - 24) * Math.PI * 1.6));
+    catPose({ t, x: -0.2, y: jp * 0.22, z: 0.25, ry: 1.25, rear: 0.35 + jp * 0.5, paws: [-1.4 * jp - 0.2, -1.1 * jp], eyes: "big", pitch: -0.35 - jp * 0.2, yaw: 0.1 * Math.sin(t * 3), tailWag: 0.5, tailSpeed: 2 });
+    look([kf(t, [[24, 0.15], [26.3, 0.25]]), 0.85, kf(t, [[24, 1.9], [26.3, 1.7]])], [0.15, 0.6, 0.15], 50);
+  } else if (t < 28.1) {   // 猫爬架放窗边
+    const pk = backOut((t - 26.3) / 0.45);
+    tree.scale.setScalar(Math.max(0.001, pk));
+    const jt = clamp((t - 26.9) / 0.45);
+    let cx, cy, cz;
+    if (t < 26.9) { cx = -1.6; cy = 0; cz = -1.6; }
+    else { cx = lerp(-1.6, -2.25, jt); cz = lerp(-1.6, -2.4, jt); cy = lerp(0, 1.335, jt) + Math.sin(jt * Math.PI) * 0.35; }
+    const ry = t < 27.4 ? Math.atan2(-2.25 + 1.6, -2.4 + 1.6) : kf(t, [[27.4, -2.4], [27.7, 2.6]]);
+    catPose({ t, x: cx, y: cy, z: cz, ry, eyes: t > 27.5 ? "big" : "open", pitch: t > 27.5 ? -0.15 : -0.3, tailWag: 0.4, tailSpeed: 1.5, rear: t > 26.9 && t < 27.35 ? 0.4 : 0, yaw: t > 27.5 ? 0.15 * Math.sin(t * 2.5) : 0 });
+    birds.forEach((b, i) => {
+      b.visible = true; const bt = t - 26.3 + i * 0.4;
+      b.position.set(-1.6 + bt * 0.35 + i * 0.15, 1.75 + 0.1 * Math.sin(bt * 2 + i), -3.5);
+      const fl = Math.sin(bt * 18 + i) * 0.6; b.userData.l.rotation.z = fl; b.userData.r.rotation.z = -fl;
+    });
+    look([kf(t, [[26.3, -0.4], [28.1, -0.6]]), 1.45, kf(t, [[26.3, -0.25], [28.1, -0.55]])], [-1.95, 1.45, -2.5], 60);
+    if (t > 26.3 && t < 26.8) SP.sparkle.forEach((s, i) => showSprite(s, -2.25 + (i - 1) * 0.4, 0.6 + i * 0.35, -2.2, backOut((t - 26.3) / 0.25) * 1.5, 1 - (t - 26.3) / 0.5));
+  } else {                 // 藏零食
+    treats.forEach((x, i) => { x.visible = true; x.rotation.y = t * 1.5 + i; });
+    const eat = t > 29.6;
+    treats[0].visible = !eat;
+    const cx = kf(t, [[28.1, 1.25], [29.2, 0.55]]), cz = kf(t, [[28.1, 0.15], [29.2, -0.45]]);
+    const ry = Math.atan2(0.35 - 1.25, -0.55 - 0.15);
+    const walking = t < 29.2;
+    catPose({ t, x: cx, z: cz, ry, walk: walking ? t * 12 : 0, pitch: walking ? 0.35 + 0.1 * Math.sin(t * 14) : (eat ? 0.05 : 0.5), eyes: eat ? "happy" : "open", mouth: !eat && t > 29.3 ? 0.6 * Math.max(0, Math.sin(t * 20)) : 0, tailWag: 0.5, tailSpeed: 2 });
+    SP.sparkle.forEach((s, i) => { const tr = treats[i]; if (tr.visible) showSprite(s, tr.position.x + 0.05, tr.position.y + 0.1, tr.position.z, 0.6 + 0.3 * Math.sin(t * 8 + i * 2), 0.9); });
+    if (eat) hearts(t, 29.65, cx - 0.05, 0.75, cz + 0.1, 0.3);
+    look([kf(t, [[28.1, -0.75], [31, -0.6]]), kf(t, [[28.1, 1.05], [31, 0.9]]), kf(t, [[28.1, -2.1], [31, -1.95]])], [0.65, 0.3, -0.25], 52, 1);
+  }
+}
+function scene5(t, lt) {   // 回家迎接
+  tree.visible = true;
+  if (t < 34.6) {
+    doorPivot.rotation.y = kf(t, [[31.2, 0], [31.6, -1.35]]);
+    const mz = kf(t, [[31.3, -3.5], [32.6, -2.1]]);
+    manPose({ visible: true, x: 1.6, z: mz, ry: 0, walk: t < 32.6 ? t * 8 : 0, bag: true, armL: t > 33.0 ? -0.9 : 0, armR: t > 33.0 ? -0.9 : 0, headPitch: t > 32.6 ? 0.35 : 0 });
+    // cat: on tree top -> jump down -> run to owner
+    let cx = -2.25, cy = 1.335, cz = -2.4, ry = 0.6, walk = 0;
+    const jt = clamp((t - 31.7) / 0.45);
+    if (t >= 31.7) { cx = lerp(-2.25, -1.4, jt); cz = lerp(-2.4, -1.7, jt); cy = lerp(1.335, 0, jt) + Math.sin(jt * Math.PI) * 0.25; ry = Math.atan2(0.85, 0.7); }
+    if (t >= 32.15) {
+      const rt = clamp((t - 32.15) / 1.0);
+      cx = lerp(-1.4, 1.45, rt); cz = lerp(-1.7, -1.55, rt); cy = Math.abs(Math.sin(rt * Math.PI * 4)) * 0.08; ry = Math.atan2(2.85, 0.15); walk = t * 26;
+    }
+    let pitch = 0, eyes = t > 31.6 ? "big" : "open", rear = 0;
+    if (t >= 33.15) {
+      ry = kf(t, [[33.15, Math.atan2(2.85, 0.15)], [33.4, Math.PI - 0.3]]); cx = 1.45; cz = -1.55;
+      const jp = Math.max(0, Math.sin((t - 33.3) * Math.PI * 2.2));
+      cy = jp * 0.25; rear = 0.6 + jp * 0.4; pitch = -0.4; eyes = "happy";
+      hearts(t, 33.3, 1.45, 1.0, -1.5, 0.5);
+    }
+    catPose({ t, x: cx, y: cy, z: cz, ry, walk, walkAmp: 1.0, eyes, pitch, rear, tailWag: 0.6, tailSpeed: 2.5, paws: rear ? [-1.6, -1.4] : null });
+    if (t > 31.5 && t < 32.3) showSprite(SP.ex, -2.25, 1.95, -2.4, backOut((t - 31.5) / 0.25), 1);
+    look([kf(t, [[31, -0.6], [34.6, -0.2]]), 1.35, kf(t, [[31, 1.4], [34.6, 1.0]])], [kf(t, [[31, 0.0], [34.6, 1.0]]), 0.8, -2.0], 52);
+  } else {                 // 特写: 被摸头的幸福脸
+    manPose({ visible: true, x: 1.6, z: -2.1, ry: 0, armR: -1.25 + 0.12 * Math.sin(t * 9), armL: 0, headPitch: 0.5 });
+    catPose({ t, x: 1.45, z: -1.55, ry: Math.PI - 0.3, eyes: "happy", pitch: -0.45 + 0.06 * Math.sin(t * 9), tailWag: 0.6, tailSpeed: 2.5, headRoll: 0.08 * Math.sin(t * 4.5) });
+    const ry = Math.PI - 0.3, f = [Math.sin(ry), Math.cos(ry)];
+    // camera low, behind owner-side, sees cat face looking up
+    const d = kf(t, [[34.6, 1.15], [38, 0.85]]);
+    look([0.95, kf(t, [[34.6, 1.1], [38, 1.0]]), kf(t, [[34.6, -2.85], [38, -2.65]])], [1.45, 0.5, -1.5], 52, 1);
+    hearts(t, 34.7, 1.45, 0.9, -1.45, 0.55);
+  }
+}
+
+// ---------------------------------------------------------------- overlay (2D)
+const ov = document.getElementById("ov"), g = ov.getContext("2d");
+function rr(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+function txt(s, x, y, size, fill, stroke = null, lw = 0, align = "center") {
+  g.font = `bold ${size}px ${FONT}`; g.textAlign = align; g.textBaseline = "middle"; g.lineJoin = "round";
+  if (stroke) { g.lineWidth = lw; g.strokeStyle = stroke; g.strokeText(s, x, y); }
+  g.fillStyle = fill; g.lineWidth = Math.max(1.5, size * 0.045); g.strokeStyle = fill; g.strokeText(s, x, y); g.fillText(s, x, y);
+}
+function richLine(s, cx, y, size, alpha) {   // {高亮}
+  const parts = []; let hl = false, cur = "";
+  for (const ch of s) {
+    if (ch === "{" || ch === "}") { if (cur) parts.push([cur, hl]); cur = ""; hl = ch === "{"; } else cur += ch;
+  }
+  if (cur) parts.push([cur, hl]);
+  g.font = `bold ${size}px ${FONT}`;
+  const widths = parts.map(p => g.measureText(p[0]).width), tot = widths.reduce((a, b) => a + b, 0);
+  let x = cx - tot / 2;
+  g.globalAlpha = alpha;
+  parts.forEach((p, i) => { txt(p[0], x, y, size, p[1] ? "#ffe14d" : "#ffffff", "#1d1d2b", 13, "left"); x += widths[i]; });
+  g.globalAlpha = 1;
+}
+function subtitleAt(t) {
+  for (let i = 0; i < SUBS.length; i++) {
+    const st = VO_START[i], dur = VO[i] ? VO[i].dur : 4;
+    if (t < st - 0.05 || t > st + dur + 0.35) continue;
+    const ch = SUBS[i], w = ch.map((c, j) => c[1] + (j < ch.length - 1 ? 1.2 : 0)), tot = w.reduce((a, b) => a + b, 0);
+    let acc = st;
+    for (let j = 0; j < ch.length; j++) {
+      const e = acc + dur * w[j] / tot;
+      if (t < e || j === ch.length - 1) return { text: ch[j][0], t0: acc };
+      acc = e;
+    }
+  }
+  return null;
+}
+function card(x, y, w, h, k) {
+  const s = backOut(k);
+  g.save(); g.translate(x + w / 2, y + h / 2); g.scale(s, s); g.translate(-x - w / 2, -y - h / 2);
+  g.globalAlpha = clamp(k * 3);
+  g.shadowColor = "rgba(80,40,80,0.25)"; g.shadowBlur = 30; g.shadowOffsetY = 10;
+  rr(x, y, w, h, 36); g.fillStyle = "rgba(255,255,255,0.94)"; g.fill();
+  g.shadowColor = "transparent";
+  g.lineWidth = 6; g.strokeStyle = "#ff9fbf"; g.stroke();
+}
+function check(x, y, s, k) {
+  rr(x - s / 2, y - s / 2, s, s, 12); g.fillStyle = k > 0 ? "#ff6f9c" : "#ffe3ec"; g.fill();
+  if (k > 0) {
+    g.strokeStyle = "#fff"; g.lineWidth = 9; g.lineCap = "round"; g.lineJoin = "round"; g.beginPath();
+    const p1 = [x - s * 0.25, y], p2 = [x - s * 0.05, y + s * 0.2], p3 = [x + s * 0.28, y - s * 0.22];
+    const k1 = clamp(k * 2), k2 = clamp(k * 2 - 1);
+    g.moveTo(...p1); g.lineTo(lerp(p1[0], p2[0], k1), lerp(p1[1], p2[1], k1));
+    if (k2 > 0) g.lineTo(lerp(p2[0], p3[0], k2), lerp(p2[1], p3[1], k2));
+    g.stroke();
+  }
+}
+function drawOverlay(t) {
+  g.clearRect(0, 0, W, H);
+  // top title
+  const tk = clamp((t - 0.15) / 0.5);
+  g.save(); g.translate(540, 250); const ts = t < 0.8 ? backOut(tk) : 1; g.scale(ts, ts);
+  g.globalAlpha = clamp(tk * 2);
+  g.shadowColor = "rgba(120,30,70,0.3)"; g.shadowBlur = 20; g.shadowOffsetY = 8;
+  rr(-420, -78, 840, 156, 78); g.fillStyle = "#ff7fa8"; g.fill(); g.shadowColor = "transparent";
+  rr(-408, -66, 816, 132, 66); g.lineWidth = 5; g.strokeStyle = "rgba(255,255,255,0.8)"; g.stroke();
+  txt("你出门，猫会无聊吗？", 0, 2, 70, "#ffffff", "#d9416f", 10);
+  g.restore();
+  g.globalAlpha = clamp((t - 0.5) / 0.4);
+  txt("#猫咪科普  #猫咪知识", 540, 375, 38, "#ffffff", "rgba(60,30,60,0.55)", 8);
+  g.globalAlpha = 1;
+
+  // scene cards
+  if (t > 7.85 && t < 12.9) {           // 睡眠时长
+    const k = clamp((t - 7.85) / 0.4) * (1 - clamp((t - 12.6) / 0.3));
+    card(150, 450, 780, 300, k);
+    txt("猫咪每天睡", 540, 515, 46, "#7a5a7a");
+    const n = Math.round(lerp(0, 16, clamp((t - 8.0) / 1.0)));
+    txt(`12~${Math.max(12, n)} 小时`, 540, 595, 84, "#ff5d8f", "#ffffff", 6);
+    for (let i = 0; i < 24; i++) {        // 24h bar
+      const on = i < 14 && t > 8.2 + i * 0.05;
+      rr(185 + i * 29.6, 668, 24, 46, 8); g.fillStyle = on ? "#a9b8ff" : "#f1e6f0"; g.fill();
+    }
+    g.restore();
+  }
+  if (t > 13.5 && t < 17.9) {           // 时间流逝
+    const k = clamp((t - 13.5) / 0.4) * (1 - clamp((t - 17.6) / 0.3));
+    card(230, 450, 620, 210, k);
+    const hrs = 8 + 11 * clamp((t - 13.5) / 3.6);
+    const hh = Math.floor(hrs), mm = Math.floor((hrs - hh) * 60 / 10) * 10;
+    txt("主人不在家", 540, 505, 42, "#7a5a7a");
+    txt(`08:00 → ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`, 540, 590, 66, "#ff7b4f", "#ffffff", 6);
+    g.restore();
+  }
+  if (t > 18.9 && t < 23.95) {          // 无聊表现
+    const items = [["乱抓沙发", 19.3], ["半夜跑酷", 20.5], ["狂叫求关注", 21.6]];
+    items.forEach(([s, t0], i) => {
+      const k = clamp((t - t0) / 0.3) * (1 - clamp((t - 23.65) / 0.3));
+      if (k <= 0) return;
+      const x = 70, y = 460 + i * 118;
+      g.save(); g.translate(x, y + 45); const sc = backOut(k); g.scale(sc, sc); g.translate(-x, -y - 45);
+      g.globalAlpha = clamp(k * 3);
+      rr(x, y, 400, 90, 45); g.fillStyle = "rgba(255,255,255,0.93)"; g.fill(); g.lineWidth = 5; g.strokeStyle = "#ff6b6b"; g.stroke();
+      g.beginPath(); g.arc(x + 48, y + 45, 28, 0, Math.PI * 2); g.fillStyle = "#ff6b6b"; g.fill();
+      g.strokeStyle = "#fff"; g.lineWidth = 7; g.lineCap = "round"; g.beginPath();
+      g.moveTo(x + 36, y + 33); g.lineTo(x + 60, y + 57); g.moveTo(x + 60, y + 33); g.lineTo(x + 36, y + 57); g.stroke();
+      txt(s, x + 92, y + 46, 46, "#d64545", null, 0, "left");
+      g.restore();
+    });
+  }
+  if (t > 24.2 && t < 30.95) {          // 小妙招清单
+    const k = clamp((t - 24.2) / 0.4) * (1 - clamp((t - 30.65) / 0.3));
+    card(450, 430, 600, 290, k);
+    txt("出门前 3 个小妙招", 750, 478, 40, "#ff5d8f");
+    const rows = [["陪玩 10 分钟，耗掉精力", 24.3], ["猫爬架放窗边，看鸟解闷", 26.3], ["藏几颗零食，玩寻宝", 28.1]];
+    rows.forEach(([s, t0], i) => {
+      const y = 548 + i * 60, kk = clamp((t - t0) / 0.5);
+      g.globalAlpha = clamp(k * 3) * (0.35 + 0.65 * clamp((t - t0 + 0.2) / 0.3));
+      check(500, y, 40, kk);
+      txt(s, 535, y + 2, 31, "#5c4560", null, 0, "left");
+    });
+    g.globalAlpha = 1;
+    g.restore();
+  }
+  // subtitles
+  const sub = subtitleAt(t);
+  if (sub) {
+    const a = clamp((t - sub.t0) / 0.12);
+    richLine(sub.text, 540, 1470 + (1 - a) * 12, 70, a);
+  }
+  // end card
+  if (t > 35.6) {
+    const k = clamp((t - 35.6) / 0.5);
+    g.globalAlpha = k * 0.55; g.fillStyle = "#3a2540"; g.fillRect(0, 0, W, H); g.globalAlpha = 1;
+    g.save(); g.translate(540, 960); const s = backOut(k); g.scale(s, s);
+    g.globalAlpha = clamp(k * 2);
+    rr(-400, -190, 800, 380, 48); g.fillStyle = "#ffffff"; g.fill(); g.lineWidth = 8; g.strokeStyle = "#ff7fa8"; g.stroke();
+    txt("猫咪不怕你出门", 0, -95, 64, "#ff5d8f");
+    txt("怕的是你回家也不陪它", 0, -10, 50, "#7a5a7a");
+    rr(-200, 55, 400, 96, 48); g.fillStyle = "#ff7fa8"; g.fill();
+    txt("关注我 · 学养猫", 0, 104, 48, "#ffffff");
+    g.restore();
+  }
+  // scene transition dips
+  for (const b of SCN.slice(1, -1)) {
+    const d = Math.abs(t - b);
+    if (d < 0.14) { g.globalAlpha = 1 - d / 0.14; g.fillStyle = "#ffffff"; g.fillRect(0, 0, W, H); g.globalAlpha = 1; }
+  }
+  if (t < 0.25) { g.globalAlpha = 1 - t / 0.25; g.fillStyle = "#ffffff"; g.fillRect(0, 0, W, H); g.globalAlpha = 1; }
+  if (t > 37.6) { g.globalAlpha = (t - 37.6) / 0.4; g.fillStyle = "#ffffff"; g.fillRect(0, 0, W, H); g.globalAlpha = 1; }
+}
+
+// ---------------------------------------------------------------- entry
+window.renderAt = function (t) {
+  resetWorld(t);
+  if (t < SCN[1]) scene0(t);
+  else if (t < SCN[2]) scene1(t, t - SCN[1]);
+  else if (t < SCN[3]) scene2(t, t - SCN[2]);
+  else if (t < SCN[4]) scene3(t, t - SCN[3]);
+  else if (t < SCN[5]) scene4(t, t - SCN[4]);
+  else scene5(t, t - SCN[5]);
+  renderer.render(scene, camera);
+  drawOverlay(t);
+  return true;
+};
+window.READY = true;
+</script>
+</body></html>
