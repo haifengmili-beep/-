@@ -10,6 +10,6 @@ python3 make_audio.py
 rm -rf output/frames
 node render.js frames 0 470 & node render.js frames 470 940 & node render.js frames 940 1410 & wait
 ffmpeg -y -v error -framerate 30 -i output/frames/f_%05d.jpg -i output/_audio.wav \
-  -c:v libx264 -preset slow -crf 17 -pix_fmt yuv420p -profile:v high -movflags +faststart \
+  -c:v libx264 -preset medium -crf 21 -tune animation -pix_fmt yuv420p -movflags +faststart \
   -c:a aac -b:a 192k -shortest output/cat_other_world_v2.mp4
 echo "done -> output/cat_other_world_v2.mp4"
