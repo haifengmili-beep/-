@@ -1,0 +1,6 @@
+{
+  "name": "other-world",
+  "private": true,
+  "description": "假如你的猫去了另一个世界 — three.js 渲染",
+  "dependencies": { "three": "0.165.0" }
+}
