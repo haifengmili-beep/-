@@ -1,0 +1,6 @@
+{
+  "name": "meow-minute",
+  "private": true,
+  "description": "假如你家的猫每分钟叫一声喵 — three.js 渲染",
+  "dependencies": { "three": "0.165.0" }
+}
