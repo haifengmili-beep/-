@@ -19,6 +19,7 @@ SR = 44100
 DUR = TL["dur"]
 N = int(SR * DUR)
 rng = np.random.default_rng(3)
+VOICE = os.environ.get("VOICE", "0") == "1"  # 默认纯音乐; VOICE=1 混入猫咪旁白
 
 
 def m2f(m):
@@ -230,12 +231,16 @@ for f in range(int(DUR * fps)):
 env = np.array(env)
 env = np.clip(env / (np.percentile(env[env > 0.01], 90) + 1e-9), 0, 1)
 env = np.convolve(env, [0.25, 0.5, 0.25], mode="same")
+if not VOICE:
+    env = env * 0  # 无旁白: 猫咪不动嘴 (时长仍用于字幕时间)
 json.dump({"fps": fps, "env": [round(float(v), 3) for v in env], "durs": durs},
           open(os.path.join(HERE, "vo", "envelope.json"), "w"))
 
 # ------------------------------------------------------------------ mix
+if not VOICE:
+    vo = vo * 0
 duck = np.ones(N)
-for i, d in enumerate(durs):
+for i, d in enumerate(durs if VOICE else []):
     a, b = TL["vo"][i] - 0.15, TL["vo"][i] + d + 0.2
     duck -= 0.32 * np.clip(np.minimum((tt - a) / 0.25, (b - tt) / 0.4), 0, 1)
 mus = (music + box * 1.1) * duck + sfx
