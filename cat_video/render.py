@@ -51,44 +51,43 @@ def vgrad(top, bot, h=H, w=W):
     return Image.fromarray(np.repeat(a, w, axis=1).astype(np.uint8), "RGB")
 
 # ---------------------------------------------------------------- 角色
-CREAM = (238, 226, 204); EAR = (226, 160, 96); EARIN = (240, 170, 170)
+PC = dict(ear=(238, 136, 168), ear_in=(250, 196, 212), head_top=(253, 214, 226), head_side=(235, 160, 186),
+          head=(249, 198, 214), body=(247, 185, 204), body_side=(229, 147, 176), spot=(229, 150, 180),
+          paw=(249, 198, 214), eye=(18, 18, 18), white=(255, 255, 255), cheek=(242, 123, 160),
+          nose=(239, 108, 143), muzzle=(247, 184, 165), mouth=(190, 80, 110))
 def cat(d, cx, by, s, t, blink=True, mouth=False, look=0.0, glow=False):
-    """体素小猫：cx=中心x, by=底部y, s=头宽"""
-    hw, hh = s, s * 0.82
+    """用户的粉色方块猫 (造型来自 meow_life/character_reference.png)。cx=中心x, by=脚底y, s=头宽"""
+    k = s / 420.0
+    bob = math.sin(t * 2.2) * 6
+    P = lambda x, y, h=0: (cx + (x - 560) * k, by + (y - 831 + h) * k)
+    def poly(pts, col, h=bob): d.polygon([P(x, y, h) for x, y in pts], fill=col)
+    def rect(x0, y0, x1, y1, col, h=bob): d.rectangle([*P(x0, y0, h), *P(x1, y1, h)], fill=col)
     # 身体
-    cube(d, cx - s * 0.42, by - s * 0.55, s * 0.84, s * 0.55, s * 0.5, shade(CREAM, 0.95))
-    # 尾巴
-    sw = math.sin(t * 3) * s * 0.08
-    cube(d, cx + s * 0.42, by - s * 0.45 + sw, s * 0.4, s * 0.12, s * 0.12, EAR)
-    # 头
-    hx, hy = cx - hw / 2, by - s * 0.5 - hh + math.sin(t * 2.2) * s * 0.02
+    poly([(336, 573), (390, 585), (390, 825), (336, 798)], PC["body_side"], 0)
+    rect(390, 585, 750, 825, PC["body"], 0)
+    for (x, y, r) in [(495, 705, 25), (600, 675, 35), (675, 745, 22), (546, 768, 16)]:
+        d.ellipse([*P(x - r, y - r, 0), *P(x + r, y + r, 0)], outline=PC["spot"], width=max(1, int(5 * k)))
+    rect(414, 783, 504, 831, PC["paw"], 0); rect(636, 783, 726, 831, PC["paw"], 0)
     # 耳朵
-    for side in (-1, 1):
-        ex = cx + side * hw * 0.28
-        d.polygon([(ex - s * 0.2, hy + 2), (ex + s * 0.2, hy + 2), (ex + side * s * 0.04, hy - s * 0.42)], fill=EAR)
-        d.polygon([(ex - s * 0.11, hy + 2), (ex + s * 0.11, hy + 2), (ex + side * s * 0.03, hy - s * 0.26)], fill=EARIN)
-    cube(d, hx, hy, hw, hh, s * 0.55, CREAM)
+    poly([(385, 255), (438, 107), (528, 255)], PC["ear"]); poly([(420, 255), (441, 173), (488, 255)], PC["ear_in"])
+    poly([(640, 255), (720, 107), (775, 280)], PC["ear"]); poly([(676, 255), (714, 173), (745, 270)], PC["ear_in"])
+    # 头
+    poly([(300, 255), (720, 255), (780, 285), (360, 285)], PC["head_top"])
+    poly([(300, 255), (360, 285), (360, 585), (300, 555)], PC["head_side"])
+    rect(360, 285, 780, 585, PC["head"])
     # 眼睛
-    es = s * 0.17
     closed = blink and (t % 3.1) < 0.12
-    for side in (-1, 1):
-        ex = cx + side * hw * 0.24 - es / 2 + look * s * 0.05
-        ey = hy + hh * 0.36
+    ox = look * 10
+    for x0 in (414, 624):
         if closed:
-            d.rectangle([ex, ey + es * 0.45, ex + es, ey + es * 0.6], fill=(25, 25, 30))
+            rect(x0, 398, x0 + 102, 412, PC["eye"])
         else:
-            d.rectangle([ex, ey, ex + es, ey + es * 1.1], fill=(25, 25, 30))
-            d.rectangle([ex + es * 0.15, ey + es * 0.12, ex + es * 0.45, ey + es * 0.42], fill=(255, 255, 255))
-    # 鼻子/嘴
-    d.rectangle([cx - s * 0.04, hy + hh * 0.62, cx + s * 0.04, hy + hh * 0.68], fill=(230, 120, 130))
-    if mouth:
-        d.rectangle([cx - s * 0.06, hy + hh * 0.72, cx + s * 0.06, hy + hh * 0.86], fill=(120, 40, 50))
-    # 腮红
-    for side in (-1, 1):
-        bx = cx + side * hw * 0.36
-        d.rectangle([bx - s * 0.07, hy + hh * 0.66, bx + s * 0.07, hy + hh * 0.72], fill=(245, 175, 175))
-    if glow:
-        pass
+            rect(x0, 345, x0 + 102, 465, PC["eye"])
+            rect(x0 + 18 + ox, 360, x0 + 54 + ox, 396, PC["white"])
+            rect(x0 + 60 + ox, 420, x0 + 84 + ox, 444, PC["white"])
+    for x0 in (402, 684): rect(x0, 486, x0 + 54, 516, PC["cheek"])
+    rect(546, 480, 594, 506, PC["nose"]); rect(510, 504, 630, 552, PC["muzzle"])
+    if mouth: rect(548, 520, 592, 548, PC["mouth"])
 
 def person(d, x, by, s, shirt, skin=(214, 160, 120), hair=(30, 28, 28), t=0, face=1, wave_arm=False):
     """体素小人：x=中心, by=脚底, s=比例(头宽)"""
@@ -316,7 +315,7 @@ def draw_scene(im, name, lt, dur, sidx):
         heart_burst(d, lt, 14, 470, 900, 200, 3)
     elif name == "gate":
         # 大屏幕
-        d.rectangle([330, 300, 750, 900], fill=(255, 170, 200), outline=(30, 30, 40), width=14)
+        d.rectangle([330, 300, 750, 900], fill=(227, 211, 238), outline=(30, 30, 40), width=14)
         cat(d, 540, 860, 200, lt)
         heart_burst(d, lt, 10, 540, 800, 180, 7, size=(16, 36))
         r = random.Random(4)
@@ -336,7 +335,7 @@ def draw_scene(im, name, lt, dur, sidx):
             person(d, x, yb, s, (r.randint(90, 220), r.randint(40, 120), r.randint(40, 100)), face=0)
         # 中间手机屏上的猫
         d.rounded_rectangle([400, 1080, 680, 1560], 24, fill=(20, 20, 24))
-        d.rectangle([420, 1110, 660, 1530], fill=(255, 190, 210))
+        d.rectangle([420, 1110, 660, 1530], fill=(227, 211, 238))
         cat(d, 540, 1470, 140, lt)
         heart_burst(d, lt, 12, 540, 1300, 160, 12, size=(14, 34))
     elif name == "stock":
@@ -359,7 +358,7 @@ def draw_scene(im, name, lt, dur, sidx):
         if p > 0.75:
             text_c(d, (540, y0 + h0 - 150), "=^･ω･^=", 60, fill=(255, 220, 230))
         # 塔上的猫广告
-        d.rectangle([600, 330, 960, 620], fill=(255, 180, 205), outline=(255, 255, 255), width=6)
+        d.rectangle([600, 330, 960, 620], fill=(227, 211, 238), outline=(255, 255, 255), width=6)
         cat(d, 780, 600, 120, lt)
     elif name == "delivery":
         # 外卖骑手停在路边看手机
@@ -370,7 +369,7 @@ def draw_scene(im, name, lt, dur, sidx):
             d.ellipse([x - 90, 1500, x - 30, 1560], fill=(20, 20, 20)); d.ellipse([x + 60, 1500, x + 120, 1560], fill=(20, 20, 20))
             cube(d, x - 70, 1330, 110, 110, 90, (250, 200, 30))               # 外卖箱
             person(d, x + 40, 1500, 60, (250, 200, 30), t=lt + k)
-            d.rectangle([x + 70, 1290, x + 100, 1340], fill=(255, 170, 200))
+            d.rectangle([x + 70, 1290, x + 100, 1340], fill=(227, 211, 238))
             heart(d, x + 60, 1240 - (lt * 60 + k * 30) % 120, 26)
         # 评价弹窗
         a = ease((lt - 1.2) / 0.4)
@@ -380,7 +379,7 @@ def draw_scene(im, name, lt, dur, sidx):
             text_c(d, (540, by + 60), "订单已超时 47 分钟", 40, fill=(80, 80, 80))
             text_c(d, (540, by + 140), "★★★★★  五星好评", 54, fill=(255, 160, 20))
     elif name == "un":
-        d.rectangle([260, 220, 820, 760], fill=(255, 196, 200), outline=(220, 200, 210), width=10)
+        d.rectangle([260, 220, 820, 760], fill=(227, 211, 238), outline=(220, 200, 210), width=10)
         cat(d, 540, 740, 290, lt)
         heart_burst(d, lt, 10, 540, 700, 260, 21, size=(18, 40))
         # 投票板
@@ -429,10 +428,10 @@ def draw_scene(im, name, lt, dur, sidx):
         text_c(d, (760, 420), "zzZ", 70, fill=(255, 255, 255), stroke=4, sfill=(200, 110, 70))
         # 手机墙上播放猫
         d.rounded_rectangle([120, 620, 420, 960], 20, fill=(20, 20, 24))
-        d.rectangle([140, 640, 400, 940], fill=(255, 190, 210)); cat(d, 270, 920, 120, lt)
+        d.rectangle([140, 640, 400, 940], fill=(227, 211, 238)); cat(d, 270, 920, 120, lt)
     elif name == "fish":
         # 屏幕(桥上的大屏)
-        d.rectangle([300, 560, 780, 860], fill=(255, 190, 210), outline=(240, 240, 255), width=8)
+        d.rectangle([300, 560, 780, 860], fill=(227, 211, 238), outline=(240, 240, 255), width=8)
         cat(d, 540, 850, 150, lt)
         r = random.Random(42)
         for k in range(40):
@@ -458,7 +457,7 @@ def draw_scene(im, name, lt, dur, sidx):
             x = lerp(sx, cx + hx * sc, form); y = lerp(sy, cy + hy * sc, form)
             d.ellipse([x - 7, y - 5, x + 7, y + 5], fill=(25, 15, 12)); d.ellipse([x + 4, y - 4, x + 11, y + 3], fill=(25, 15, 12))
         # 中间一张猫的照片
-        d.rectangle([400, 900, 680, 1180], fill=(255, 255, 255)); d.rectangle([414, 914, 666, 1140], fill=(255, 205, 220))
+        d.rectangle([400, 900, 680, 1180], fill=(255, 255, 255)); d.rectangle([414, 914, 666, 1140], fill=(227, 211, 238))
         cat(d, 540, 1130, 120, lt)
         # 被丢下的面包屑
         for k in range(6): cube(d, 150 + k * 140, 1650, 26, 18, 18, (240, 220, 170))
@@ -479,7 +478,7 @@ def draw_scene(im, name, lt, dur, sidx):
             fl = clamp(1 - (lt - 2.6) * 3)
             if fl > 0: im.paste(Image.blend(im, Image.new("RGB", (W, H), (255, 255, 255)), fl * 0.8)); d = ImageDraw.Draw(im)
             if lt > 2.8:
-                d.rectangle([600, 300, 960, 600], fill=(255, 255, 255)); d.rectangle([620, 320, 940, 560], fill=(255, 200, 215))
+                d.rectangle([600, 300, 960, 600], fill=(255, 255, 255)); d.rectangle([620, 320, 940, 560], fill=(227, 211, 238))
                 cat(d, 780, 550, 110, lt)
     elif name == "voyager":
         # 旅行者号：天线盘 + 杆
