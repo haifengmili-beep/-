@@ -76,7 +76,7 @@ export function makeSparkles(n, boxSize, color, size, seed, rise = 0.12) {
 }
 
 // ------------------------------------------------------------------ 粉色方块猫
-export const CAT = { head: '#f7aec5', body: '#f3b2c7', ear: '#e5719b', earIn: '#ffc9d9', paw: '#fbcbd9', tail: '#f0a2be', tip: '#e2709a' };
+export const CAT = { head: '#fde0e9', body: '#fbd3e0', ear: '#f294b5', earIn: '#ffe1ea', paw: '#fde0e9', tail: '#f9c3d5', tip: '#f094b4' };
 
 export function drawFace(g, s) {
   const w = 520, h = 440; g.clearRect(0, 0, w, h);
@@ -154,7 +154,7 @@ function makeChain(n = 7, segLen = 0.2, w = 0.16) {
 export function makeCat() {
   const root = new THREE.Group();
   const bodyMat = std('#ffffff', { map: speckTex });
-  const headMat = std(CAT.head, { emissive: new THREE.Color(CAT.head), emissiveIntensity: 0.08 });
+  const headMat = std(CAT.head, { emissive: new THREE.Color(CAT.head), emissiveIntensity: 0.14 });
   const earMat = std(CAT.ear), earInMat = std(CAT.earIn), pawMat = std(CAT.paw, { map: speckTex });
   const bodyPivot = new THREE.Group(); root.add(bodyPivot);
   const body = mesh(rbox(1.0, 0.82, 1.45, 0.08), bodyMat); body.position.set(0, 0.47, -0.5); bodyPivot.add(body);
