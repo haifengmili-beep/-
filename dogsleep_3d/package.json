@@ -1,0 +1,6 @@
+{
+  "name": "dogsleep-3d",
+  "private": true,
+  "description": "为什么狗从来不打扰主人睡觉 — three.js 3D 版",
+  "dependencies": { "three": "0.165.0" }
+}
