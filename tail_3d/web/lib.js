@@ -1,4 +1,4 @@
-// 共享工具 + 3D 粉色方块猫 (参考用户给的 3D 方块猫造型: 大方头、方眼睛白高光、四棱锥耳朵、带圆圈纹理的身体)
+// 共享工具 + 3D 粉色方块猫 (参考用户给的 3D 方块猫造型: 大方头、方眼睛白高光、四棱锥耳朵; 身体是小鱼花纹)
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -114,12 +114,28 @@ export function drawFace(g, s) {
   else if (s.mouth === 'flat') { g.beginPath(); g.moveTo(236, 350); g.lineTo(284, 350); g.stroke(); }
 }
 
+// 身体花纹: 小鱼 (深粉/白/浅蓝, 方向各不相同)
 const speckTex = canvasTex(256, 256, (g, w, h) => {
   g.fillStyle = CAT.body; g.fillRect(0, 0, w, h);
-  const r = rng(5);
-  g.strokeStyle = 'rgba(206,108,146,0.5)'; g.lineWidth = 3;
-  for (let i = 0; i < 70; i++) { g.beginPath(); g.arc(r() * w, r() * h, 4 + r() * 13, 0, 7); g.stroke(); }
-  g.fillStyle = 'rgba(255,255,255,0.28)'; for (let i = 0; i < 260; i++) g.fillRect(r() * w, r() * h, 2, 2);
+  const r = rng(5), cols = ['#e0709a', '#ffffff', '#9fc8f2', '#f59a7a'];
+  const fish = (x, y, s, a, c) => {
+    g.save(); g.translate(x, y); g.rotate(a); g.scale(s, s);
+    g.fillStyle = c;
+    g.beginPath(); g.ellipse(0, 0, 14, 8, 0, 0, Math.PI * 2); g.fill();          // 身体
+    g.beginPath(); g.moveTo(11, 0); g.lineTo(24, -9); g.lineTo(24, 9); g.closePath(); g.fill();  // 尾巴
+    g.fillStyle = 'rgba(70,30,60,0.8)'; g.beginPath(); g.arc(-7, -2, 2.2, 0, 7); g.fill();     // 眼睛
+    g.strokeStyle = 'rgba(255,255,255,0.6)'; g.lineWidth = 1.5; g.beginPath(); g.arc(-1, 0, 6, -1.2, 1.2); g.stroke(); // 鱼鳃
+    g.restore();
+  };
+  // 网格散点, 跨边缘再画一次以保证无缝平铺
+  for (let gy = 0; gy < 3; gy++) for (let gx = 0; gx < 3; gx++) {
+    const x = gx * 85 + 28 + r() * 30, y = gy * 85 + 28 + r() * 30, s = 1.5 + r() * 0.4, a = (r() - 0.5) * 1.6 + (r() < 0.5 ? Math.PI : 0);
+    const c = cols[(gx + gy * 2) % cols.length];
+    for (const [dx, dy] of [[0, 0], [w, 0], [-w, 0], [0, h], [0, -h]]) fish(x + dx, y + dy, s, a, c);
+  }
+  // 小气泡
+  g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 1.5;
+  for (let i = 0; i < 10; i++) { g.beginPath(); g.arc(r() * w, r() * h, 3 + r() * 4, 0, 7); g.stroke(); }
 });
 speckTex.wrapS = speckTex.wrapT = THREE.RepeatWrapping;
 
