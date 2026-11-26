@@ -128,14 +128,14 @@ const speckTex = canvasTex(256, 256, (g, w, h) => {
     g.restore();
   };
   // 网格散点, 跨边缘再画一次以保证无缝平铺
-  for (let gy = 0; gy < 3; gy++) for (let gx = 0; gx < 3; gx++) {
-    const x = gx * 85 + 28 + r() * 30, y = gy * 85 + 28 + r() * 30, s = 1.5 + r() * 0.4, a = (r() - 0.5) * 1.6 + (r() < 0.5 ? Math.PI : 0);
+  for (let gy = 0; gy < 2; gy++) for (let gx = 0; gx < 2; gx++) {   // 4 条鱼一格, 鱼少一点
+    const x = gx * 128 + 40 + (gy % 2) * 50 + r() * 20, y = gy * 128 + 40 + r() * 40, s = 1.6 + r() * 0.3, a = (r() - 0.5) * 1.6 + (r() < 0.5 ? Math.PI : 0);
     const c = cols[(gx + gy * 2) % cols.length];
     for (const [dx, dy] of [[0, 0], [w, 0], [-w, 0], [0, h], [0, -h]]) fish(x + dx, y + dy, s, a, c);
   }
   // 小气泡
   g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 1.5;
-  for (let i = 0; i < 10; i++) { g.beginPath(); g.arc(r() * w, r() * h, 3 + r() * 4, 0, 7); g.stroke(); }
+  for (let i = 0; i < 5; i++) { g.beginPath(); g.arc(r() * w, r() * h, 3 + r() * 4, 0, 7); g.stroke(); }
 });
 speckTex.wrapS = speckTex.wrapT = THREE.RepeatWrapping;
 
