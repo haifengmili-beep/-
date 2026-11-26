@@ -1,0 +1,6 @@
+{
+  "name": "catvision-3d",
+  "private": true,
+  "description": "假如你用猫的眼睛看自己的家 — three.js 3D 版",
+  "dependencies": { "three": "0.165.0" }
+}

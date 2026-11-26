@@ -128,14 +128,14 @@ const speckTex = canvasTex(256, 256, (g, w, h) => {
     g.restore();
   };
   // 网格散点, 跨边缘再画一次以保证无缝平铺
-  for (let gy = 0; gy < 3; gy++) for (let gx = 0; gx < 3; gx++) {
-    const x = gx * 85 + 28 + r() * 30, y = gy * 85 + 28 + r() * 30, s = 1.5 + r() * 0.4, a = (r() - 0.5) * 1.6 + (r() < 0.5 ? Math.PI : 0);
+  for (let gy = 0; gy < 2; gy++) for (let gx = 0; gx < 2; gx++) {   // 4 条鱼一格, 鱼少一点
+    const x = gx * 128 + 40 + (gy % 2) * 50 + r() * 20, y = gy * 128 + 40 + r() * 40, s = 1.6 + r() * 0.3, a = (r() - 0.5) * 1.6 + (r() < 0.5 ? Math.PI : 0);
     const c = cols[(gx + gy * 2) % cols.length];
     for (const [dx, dy] of [[0, 0], [w, 0], [-w, 0], [0, h], [0, -h]]) fish(x + dx, y + dy, s, a, c);
   }
   // 小气泡
   g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 1.5;
-  for (let i = 0; i < 10; i++) { g.beginPath(); g.arc(r() * w, r() * h, 3 + r() * 4, 0, 7); g.stroke(); }
+  for (let i = 0; i < 5; i++) { g.beginPath(); g.arc(r() * w, r() * h, 3 + r() * 4, 0, 7); g.stroke(); }
 });
 speckTex.wrapS = speckTex.wrapT = THREE.RepeatWrapping;
 
@@ -249,42 +249,102 @@ export function makeCat() {
   return api;
 }
 
-// ------------------------------------------------------------------ 方块小人
+// ------------------------------------------------------------------ 主人: 方块风女生 (长发 + 发卡 + 连衣裙, 大眼睛)
+function drawGirlFace(g, s) {
+  const w = 300, h = 280; g.clearRect(0, 0, w, h);
+  // 腮红
+  g.fillStyle = 'rgba(246,128,150,0.55)';
+  for (const x of [52, 248]) { g.beginPath(); g.ellipse(x, 190, 30, 15, 0, 0, 7); g.fill(); }
+  for (const [ex, sx] of [[95, -1], [205, 1]]) {
+    const ey = 140;
+    if (s.blink) {   // 闭眼: 弯弯的线 + 睫毛
+      g.strokeStyle = '#3a2230'; g.lineWidth = 7; g.lineCap = 'round';
+      g.beginPath(); g.arc(ex, ey - 6, 26, 0.15 * Math.PI, 0.85 * Math.PI); g.stroke();
+      continue;
+    }
+    const k = s.shock ? 1.15 : 1;
+    // 眼白 + 棕色瞳孔 + 黑瞳 + 两个高光
+    g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(ex, ey, 30 * k, 38 * k, 0, 0, 7); g.fill();
+    g.fillStyle = '#7a4a3a'; g.beginPath(); g.ellipse(ex + s.look * 5, ey + 4, 24 * k, 32 * k, 0, 0, 7); g.fill();
+    g.fillStyle = '#2b1820'; g.beginPath(); g.ellipse(ex + s.look * 5, ey + 6, s.shock ? 9 : 14, s.shock ? 12 : 19, 0, 0, 7); g.fill();
+    g.fillStyle = '#ffffff';
+    g.beginPath(); g.ellipse(ex - 9 + s.look * 5, ey - 10, 9, 11, 0, 0, 7); g.fill();
+    g.beginPath(); g.arc(ex + 10 + s.look * 5, ey + 18, 4.5, 0, 7); g.fill();
+    // 上眼线 + 睫毛
+    g.strokeStyle = '#2b1820'; g.lineWidth = 7; g.lineCap = 'round';
+    g.beginPath(); g.ellipse(ex, ey, 31 * k, 39 * k, 0, 1.15 * Math.PI, 1.85 * Math.PI); g.stroke();
+    g.lineWidth = 5;
+    g.beginPath(); g.moveTo(ex + sx * 26, ey - 28); g.lineTo(ex + sx * 40, ey - 40); g.stroke();
+    g.beginPath(); g.moveTo(ex + sx * 30, ey - 18); g.lineTo(ex + sx * 44, ey - 24); g.stroke();
+  }
+  // 眉毛 + 嘴
+  g.strokeStyle = '#6b4134'; g.lineWidth = 6; g.lineCap = 'round';
+  for (const ex of [95, 205]) { g.beginPath(); g.moveTo(ex - 22, s.shock ? 70 : 80); g.quadraticCurveTo(ex, s.shock ? 60 : 72, ex + 22, s.shock ? 70 : 80); g.stroke(); }
+  if (s.shock) { g.fillStyle = '#c8506a'; g.beginPath(); g.ellipse(150, 226, 13, 17, 0, 0, 7); g.fill(); }
+  else { g.strokeStyle = '#d2556f'; g.lineWidth = 7; g.beginPath(); g.arc(150, 206, 20, 0.2 * Math.PI, 0.8 * Math.PI); g.stroke(); }
+}
+
 export function makePerson() {
   const root = new THREE.Group();
-  const shirt = std('#3fa393'), pants = std('#5568a8'), skin = std('#ecb994'), hair = std('#5a3a30'), ink = std('#2a1a22');
-  for (const sx of [-1, 1]) { const l = box(0.34, 0.95, 0.36, pants); l.position.set(sx * 0.2, 0.47, 0); root.add(l); }
-  const torso = box(0.95, 1.05, 0.55, shirt); torso.position.y = 1.45; root.add(torso);
+  const dress = std('#3fb0a0'), dressDk = std('#2f9384'), skin = std('#f7d3bd'), hair = std('#6b4134'), hairHi = std('#85533f');
+  const white = std('#ffffff'), shoe = std('#f27aa0'), bow = std('#ff7aa6');
+  // 腿 + 鞋
+  for (const sx of [-1, 1]) {
+    const l = box(0.2, 0.78, 0.22, skin, 0.06); l.position.set(sx * 0.17, 0.46, 0); root.add(l);
+    const sh = box(0.26, 0.14, 0.34, shoe, 0.05); sh.position.set(sx * 0.17, 0.07, 0.05); root.add(sh);
+  }
+  // 连衣裙: 伞形裙摆 + 上身 + 白领子 + 腰带
+  const skirt = mesh(new THREE.CylinderGeometry(0.42, 0.72, 0.8, 8, 1), dress); skirt.rotation.y = Math.PI / 8; skirt.position.y = 1.15; root.add(skirt);
+  const belt = mesh(new THREE.CylinderGeometry(0.43, 0.43, 0.1, 8, 1), dressDk); belt.rotation.y = Math.PI / 8; belt.position.y = 1.56; root.add(belt);
+  const torso = box(0.78, 0.62, 0.46, dress, 0.12); torso.position.y = 1.9; root.add(torso);
+  for (const sx of [-1, 1]) { const c = box(0.26, 0.1, 0.06, white, 0.03); c.position.set(sx * 0.13, 2.18, 0.23); c.rotation.z = -sx * 0.35; root.add(c); }
+  const neck = box(0.18, 0.14, 0.16, skin, 0.04); neck.position.y = 2.25; root.add(neck);
+  // 手臂: 泡泡袖 + 手臂 + 手
   const arms = [];
   for (const sx of [-1, 1]) {
-    const piv = new THREE.Group(); piv.position.set(sx * 0.62, 1.9, 0); root.add(piv);
-    const a = box(0.26, 0.95, 0.3, shirt); a.position.y = -0.45; piv.add(a);
-    const hnd = box(0.24, 0.2, 0.26, skin); hnd.position.y = -0.98; piv.add(hnd);
+    const piv = new THREE.Group(); piv.position.set(sx * 0.48, 2.12, 0); root.add(piv);
+    const sl = box(0.28, 0.28, 0.3, dress, 0.1); sl.position.y = -0.08; piv.add(sl);
+    const a = box(0.16, 0.62, 0.18, skin, 0.06); a.position.y = -0.48; piv.add(a);
+    const hnd = box(0.18, 0.16, 0.2, skin, 0.06); hnd.position.y = -0.84; piv.add(hnd);
     arms.push(piv);
   }
-  const headG = new THREE.Group(); headG.position.y = 2.0; root.add(headG);
-  const h = box(0.82, 0.8, 0.75, skin); h.position.y = 0.42; headG.add(h);
-  const hr = box(0.88, 0.24, 0.8, hair); hr.position.y = 0.86; headG.add(hr);
-  const hb = box(0.88, 0.6, 0.2, hair); hb.position.set(0, 0.6, -0.33); headG.add(hb);
-  const eyes = [];
-  for (const sx of [-1, 1]) { const e = box(0.1, 0.12, 0.04, ink, 0.01); e.position.set(sx * 0.18, 0.5, 0.38); headG.add(e); eyes.push(e); }
-  const mouth = box(0.18, 0.05, 0.04, std('#d06a78'), 0.01); mouth.position.set(0, 0.26, 0.38); headG.add(mouth);
+  // 头 + 脸贴图
+  const headG = new THREE.Group(); headG.position.y = 2.3; root.add(headG);
+  const h = box(0.84, 0.8, 0.76, skin, 0.1); h.position.y = 0.42; headG.add(h);
+  const faceTex = canvasTex(300, 280, () => {});
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.78, 0.73), new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, roughness: 0.6 }));
+  face.position.set(0, 0.4, 0.385); headG.add(face);
+  // 头发: 头顶 + 刘海 + 两侧 + 背后长发 + 发卡蝴蝶结
+  const top = box(0.94, 0.26, 0.86, hair, 0.1); top.position.y = 0.86; headG.add(top);
+  for (let i = 0; i < 4; i++) { const bg_ = box(0.24, 0.2 + (i % 2) * 0.06, 0.1, i % 2 ? hairHi : hair, 0.04); bg_.position.set(-0.33 + i * 0.22, 0.72 - (i % 2) * 0.03, 0.4); headG.add(bg_); }
+  const side = [];
+  for (const sx of [-1, 1]) { const s_ = box(0.14, 0.95, 0.56, hair, 0.06); s_.position.set(sx * 0.48, 0.38, -0.04); headG.add(s_); side.push(s_); }
+  const longHair = box(0.94, 1.35, 0.24, hair, 0.08); longHair.position.set(0, 0.22, -0.38); headG.add(longHair);
+  const tip = box(0.8, 0.2, 0.22, hairHi, 0.08); tip.position.set(0, -0.48, -0.38); headG.add(tip);
+  const bowG = new THREE.Group(); bowG.position.set(0.3, 0.98, 0.18); bowG.rotation.z = -0.3; headG.add(bowG);
+  for (const sx of [-1, 1]) { const w_ = mesh(new THREE.ConeGeometry(0.12, 0.22, 4), bow); w_.rotation.z = sx * Math.PI / 2; w_.position.x = sx * 0.1; bowG.add(w_); }
+  const knot = box(0.08, 0.08, 0.08, bow, 0.02); bowG.add(knot);
+  // 被风吹起的发丝
   const strands = [];
-  for (let i = 0; i < 5; i++) { const s = box(0.1, 0.4, 0.1, hair, 0.03); s.position.set(-0.32 + i * 0.16, 1.0, 0); headG.add(s); strands.push(s); }
+  for (let i = 0; i < 5; i++) { const s_ = box(0.08, 0.45, 0.08, hair, 0.03); s_.position.set(-0.3 + i * 0.15, 0.95, -0.2); headG.add(s_); strands.push(s_); }
   root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  const st = { blink: false, shock: false, look: 0 };
   return {
     root,
     update(t, o = {}) {
       root.visible = true;
-      root.position.y = 0.03 * Math.sin(t * 2.4);
-      const blink = (t % 2.9) < 0.12;
-      eyes.forEach(e => { e.scale.y = blink ? 0.15 : (o.shock ? 1.6 : 1); e.scale.x = o.shock ? 1.4 : 1; });
-      mouth.scale.set(o.shock ? 0.6 : 1, o.shock ? 3 : 1, 1);
-      arms[0].rotation.z = o.wave ? -2.4 + 0.4 * Math.sin(t * 8) : -0.08;
-      arms[1].rotation.z = o.reach ? 1.3 + 0.1 * Math.sin(t * 6) : 0.08;
+      root.position.y = 0.02 * Math.sin(t * 2.4);
+      root.scale.set(1, 1 + 0.008 * Math.sin(t * 2.4), 1);
+      st.blink = (t % 2.9) < 0.12 && !o.shock; st.shock = !!o.shock; st.look = 0.6 * Math.sin(t * 0.7);
+      drawGirlFace(faceTex.userData.g, st); faceTex.needsUpdate = true;
+      arms[0].rotation.z = o.wave ? -2.5 + 0.35 * Math.sin(t * 8) : -0.1 - 0.03 * Math.sin(t * 2.4);
+      arms[1].rotation.z = o.reach ? 1.25 + 0.1 * Math.sin(t * 6) : 0.1 + 0.03 * Math.sin(t * 2.4);
       arms[0].rotation.x = 0; arms[1].rotation.x = 0;
-      headG.rotation.y = o.headYaw || 0.15 * Math.sin(t * 0.8);
-      strands.forEach((s, i) => { s.visible = !!o.blow; s.rotation.z = 1.2 + 0.3 * Math.sin(t * 14 + i); });
+      headG.rotation.set(0, o.headYaw ?? 0.15 * Math.sin(t * 0.8), 0.06 * Math.sin(t * 1.1));
+      bowG.rotation.y = 0.15 * Math.sin(t * 3);
+      longHair.rotation.x = 0.04 * Math.sin(t * 1.7) + (o.blow ? 0.35 + 0.1 * Math.sin(t * 12) : 0);
+      side.forEach((s_, i) => { s_.rotation.z = (o.blow ? 0.4 : 0.03) * Math.sin(t * (o.blow ? 13 : 1.5) + i); });
+      strands.forEach((s_, i) => { s_.visible = !!o.blow; s_.rotation.z = 1.2 + 0.3 * Math.sin(t * 14 + i); });
     },
   };
 }
