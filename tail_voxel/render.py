@@ -23,6 +23,14 @@ def F(size):
 def lerp(a, b, t): return a + (b - a) * t
 def clamp(x, a=0.0, b=1.0): return max(a, min(b, x))
 def ease(t): t = clamp(t); return t * t * (3 - 2 * t)
+def back(t, c=1.9):  # 回弹 (会冲过头再回来)
+    t = clamp(t); return 1 + (c + 1) * (t - 1) ** 3 + c * (t - 1) ** 2
+def bounce(t):  # 落地弹两下
+    t = clamp(t)
+    if t < 1 / 2.75: return 7.5625 * t * t
+    if t < 2 / 2.75: t -= 1.5 / 2.75; return 7.5625 * t * t + 0.75
+    if t < 2.5 / 2.75: t -= 2.25 / 2.75; return 7.5625 * t * t + 0.9375
+    t -= 2.625 / 2.75; return 7.5625 * t * t + 0.984375
 def shade(c, k): return tuple(int(clamp(v * k, 0, 255)) for v in c[:3])
 def mix(c1, c2, t): return tuple(int(lerp(a, b, t)) for a, b in zip(c1, c2))
 
@@ -64,14 +72,18 @@ SHIRT, PANTS, SKIN, HAIR = (150, 212, 192), (140, 160, 206), (244, 206, 178), (1
 
 # ---------------------------------------------------------------- 灵动版粉色方块猫
 def cat(d, cx, by, s, t, eyes="normal", mouth="w", look=0.0, tilt=0.0, head_dy=0.0, hop=0.0, walk=0.0,
-        tail=(-1.7, 0.4, 1.1), wh=None, blush=0.6, rot=0.0, brows=False, tails=None):
+        tail=(-1.7, 0.4, 1.1), wh=None, blush=0.6, rot=0.0, brows=False, tails=None, enter=None):
     """cx=中心x, by=脚底y, s=头宽. 自带: 歪头/眨眼/抖耳朵/甩尾巴/呼吸.
     eyes: normal/happy/half/dot ; hop=蹦跳强度 ; walk=走路 ; wh=胡子 dict(n每侧, L, spread, droop, mode)
     tails=多条尾巴 dict(n, mode=fan/two/knot/prop, a0, a1, amp, hz)."""
     k = s / 420.0
     jump = hop * abs(math.sin(t * math.pi * 1.6)) * 70
+    if enter is not None and enter < 0.7:  # 入场: 从天而降, 落地弹两下 + 压扁
+        jump += (1 - bounce(enter / 0.7)) * 900
     land = hop * max(0.0, 1 - abs(math.sin(t * math.pi * 1.6)) * 6)        # 落地瞬间压扁
-    sq = 0.02 * math.sin(t * 3.2) - 0.08 * land + 0.04 * hop * (jump / 70)
+    sq = 0.02 * math.sin(t * 3.2) - 0.08 * land + 0.04 * hop * min(1.0, jump / 70)
+    if enter is not None and 0.25 < enter < 0.85:
+        sq -= 0.12 * math.sin(math.pi * (enter - 0.25) / 0.6)
     tl = tilt + 0.07 * math.sin(t * 1.6) + 0.04 * math.sin(t * 3.7)           # 自然歪头
     hb = 4 * math.sin(t * 2.2) + head_dy
     c, sn = math.cos(rot), math.sin(rot)
@@ -249,6 +261,7 @@ def muzzle_world(cx, by, s, side):
 
 
 def person(d, x, by, s, t=0.0, wave_arm=False, face="smile"):
+    by = by + 5 * math.sin(t * 2.4 + x * 0.01)  # 呼吸起伏
     cube(d, x - s * 0.4, by - s * 0.9, s * 0.35, s * 0.9, s * 0.3, PANTS)
     cube(d, x + s * 0.05, by - s * 0.9, s * 0.35, s * 0.9, s * 0.3, PANTS)
     cube(d, x - s * 0.55, by - s * 2.1, s * 1.1, s * 1.25, s * 0.5, SHIRT)
@@ -263,6 +276,10 @@ def person(d, x, by, s, t=0.0, wave_arm=False, face="smile"):
         for ex in (x - s * 0.27, x + s * 0.13):
             d.rectangle([ex, hy + s * 0.36, ex + e * 1.3, hy + s * 0.36 + e * 1.3], fill=INK)
         d.rectangle([x - s * 0.08, hy + s * 0.62, x + s * 0.08, hy + s * 0.76], fill=(200, 100, 110))
+    elif ((t + x * 0.003) % 2.9) < 0.12:  # 眨眼
+        d.rectangle([x - s * 0.25, hy + s * 0.44, x - s * 0.25 + e, hy + s * 0.47], fill=INK)
+        d.rectangle([x + s * 0.15, hy + s * 0.44, x + s * 0.15 + e, hy + s * 0.47], fill=INK)
+        d.rectangle([x - s * 0.1, hy + s * 0.65, x + s * 0.1, hy + s * 0.7], fill=(220, 110, 120))
     else:
         d.rectangle([x - s * 0.25, hy + s * 0.4, x - s * 0.25 + e, hy + s * 0.4 + e], fill=INK)
         d.rectangle([x + s * 0.15, hy + s * 0.4, x + s * 0.15 + e, hy + s * 0.4 + e], fill=INK)
@@ -271,7 +288,10 @@ def person(d, x, by, s, t=0.0, wave_arm=False, face="smile"):
         d.rectangle([x + s * 0.22, hy + s * 0.56, x + s * 0.36, hy + s * 0.62], fill=(250, 170, 170))
 
 
-def pill(d, x, y, s, size=44, fill=(255, 255, 255), bgc=PINK):
+def pill(d, x, y, s, size=44, fill=(255, 255, 255), bgc=PINK, age=None):
+    if age is not None:  # 弹出: 从小放大并回弹, 之后轻轻浮动
+        size = max(4, int(size * back(age / 0.35)))
+        y += 6 * math.sin(age * 3)
     w = d.textlength(s, font=F(size)) + 50
     d.rounded_rectangle([x - w / 2, y - size * 0.75, x + w / 2, y + size * 0.75], int(size * 0.75), fill=bgc)
     text_c(d, (x, y), s, size, fill=fill)
@@ -438,11 +458,11 @@ def draw_scene(im, name, lt, dur):
         text_c(d, (540, 625), "每天多一条尾巴", 82, fill=PEACH)
         text_c(d, (540, 790), "会发生什么？", 76, fill=(255, 255, 255), stroke=6, sfill=INK)
     elif name == "t0":
-        cat(d, 520, 1450, 330, lt, tilt=0.1 * math.sin(lt * 2), look=math.sin(lt * 1.5), wh=SMALL_WH,
+        cat(d, 520, 1450, 330, lt, enter=lt, tilt=0.1 * math.sin(lt * 2), look=math.sin(lt * 1.5), wh=SMALL_WH,
             tail=(-1.75, 0.22, 0.9), hop=0.35)
-        if lt > 0.5: pill(d, 800, 860, "竖尾巴 = 见到你开心", 40, bgc=MINT)
+        if lt > 0.5: pill(d, 800, 860, "竖尾巴 = 见到你开心", 40, bgc=MINT, age=lt - 0.5)
     elif name == "t1":
-        cat(d, 500, 1450, 330, lt, eyes="dot", look=math.sin(lt * 4), wh=SMALL_WH, tails=dict(n=2, mode="two"))
+        cat(d, 500, 1450, 330, lt, enter=lt, eyes="dot", look=math.sin(lt * 4), wh=SMALL_WH, tails=dict(n=2, mode="two"))
         pop(d, 690, 1060, "开心♪", 56, MINT, lt, 0.4)
         pop(d, 900, 1300, "别烦我", 56, PINK, lt, 0.9)
         pop(d, 500, 860, "?", 110, LAV, lt, 1.6)
@@ -461,19 +481,19 @@ def draw_scene(im, name, lt, dur):
         for i in range(6):  # 风
             wy = 1000 + i * 70; wx = 520 - ((lt * 900 + i * 120) % 500)
             d.line([(wx, wy), (wx + 120, wy - 6)], fill=(255, 255, 255), width=7)
-        cat(d, 640, 1450, 320, lt, eyes="happy", wh=SMALL_WH, tails=dict(n=4, a0=-2.5, a1=-0.65, amp=0.55, hz=4.0))
-        if lt > 0.8: pill(d, 860, 820, "风力 3 级", 42, bgc=SKY)
+        cat(d, 640, 1450, 320, lt, enter=lt, eyes="happy", wh=SMALL_WH, tails=dict(n=4, a0=-2.5, a1=-0.65, amp=0.55, hz=4.0))
+        if lt > 0.8: pill(d, 860, 820, "风力 3 级", 42, bgc=SKY, age=lt - 0.8)
     elif name == "t7":
         peacock(d, 220, 1560, lt)
         pop(d, 220, 1120, "?", 110, LAV, lt, 1.0)
-        cat(d, 640, 1480, 300, lt, eyes="normal", tilt=0.12, wh=SMALL_WH,
+        cat(d, 640, 1480, 300, lt, enter=lt, eyes="normal", tilt=0.12, wh=SMALL_WH,
             tails=dict(n=8, a0=-3.05, a1=-0.1, amp=0.18, hz=1.0, segs=15))
-        if lt > 0.5: pill(d, 820, 760, "开屏！", 46, bgc=PINK)
+        if lt > 0.5: pill(d, 820, 760, "开屏！", 46, bgc=PINK, age=lt - 0.5)
     elif name == "t30":
         person(d, 900, 1660, 140, t=lt, face="shock")
-        cat(d, 400, 1450, 300, lt, eyes="half", mouth="flat", wh=SMALL_WH, tails=dict(n=31, mode="knot"))
+        cat(d, 400, 1450, 300, lt, enter=lt, eyes="half", mouth="flat", wh=SMALL_WH, tails=dict(n=31, mode="knot"))
         d.line([(830, 1330), (760, 1330 + 10 * math.sin(lt * 8))], fill=SKIN, width=26)
-        if lt > 0.6: pill(d, 820, 880, "解了一下午", 44, bgc=LAV)
+        if lt > 0.6: pill(d, 820, 880, "解了一下午", 44, bgc=LAV, age=lt - 0.6)
         d.ellipse([975, 1080, 1000, 1110], fill=(170, 214, 250))
     elif name == "t100":
         for x, f in ((170, 0.3), (930, 0.5)):
@@ -483,20 +503,20 @@ def draw_scene(im, name, lt, dur):
         for j in range(5):
             d.line([(cx - 200 - j * 30, cy - 120 + j * 50), (cx - 320 - j * 30, cy - 90 + j * 50)], fill=(255, 255, 255), width=8)
         cat(d, cx, cy, 230, lt, eyes="happy", wh=SMALL_WH, rot=0.12, tails=dict(n=101, mode="prop", spin=14))
-        if lt > 0.9: pill(d, 540, 520, "猫：起飞～", 44, bgc=SKY)
+        if lt > 0.9: pill(d, 540, 520, "猫：起飞～", 44, bgc=SKY, age=lt - 0.9)
     elif name == "t365":
         fox(d, 190, 1760, 0.9, lt)
         if lt > 0.8:
             d.rounded_rectangle([110, 1360, 300, 1440], 30, fill=(255, 255, 255))
             text_c(d, (205, 1398), "……", 50, fill=INK)
-        cat(d, 600, 1520, 260, lt, eyes="happy", blush=1.0, wh=SMALL_WH,
+        cat(d, 600, 1520, 260, lt, enter=lt, eyes="happy", blush=1.0, wh=SMALL_WH,
             tails=dict(n=366, a0=-3.14, a1=0.0, amp=0.25, hz=1.2, segs=16, sl=40.0))
     elif name == "why":
-        cat(d, 540, 1700, 470, lt, look=0.5 * math.sin(lt), wh=SMALL_WH, tail=(-1.6, 0.6, 1.0))
+        cat(d, 540, 1700, 470, lt, enter=lt, look=0.5 * math.sin(lt), wh=SMALL_WH, tail=(-1.6, 0.6, 1.0))
         labels = ("竖起来 → 开心、打招呼", "快速甩 → 不耐烦", "炸毛变粗 → 害怕", "走高处 → 帮忙保持平衡")
         for i, s in enumerate(labels):
             if lt > 0.3 + i * 0.7:
-                pill(d, 540, 280 + i * 115, s, 40, fill=INK, bgc=(255, 255, 255))
+                pill(d, 540, 280 + i * 115, s, 40, fill=INK, bgc=(255, 255, 255), age=lt - 0.3 - i * 0.7)
     elif name == "back":
         person(d, 860, 1660, 150, t=lt)
         x = lerp(220, 580, ease(clamp(lt / 3.2)))
@@ -527,8 +547,9 @@ def draw_hud(d, sc, lt, dur):
     text_c(d, (x, y), "尾巴数量", 46, anchor="lm", stroke=4, sfill=INK)
     d.text((x, y + 34), "T A I L S", font=F(20), fill=INK, anchor="lm")
     num = f"{val:,}"
-    d.text((x, y + 110), num, font=F(96), fill=(255, 255, 255), stroke_width=5, stroke_fill=INK, anchor="lm")
-    w = d.textlength(num, font=F(96)) + 10
+    ns = int(96 * (0.7 + 0.3 * back(lt / 0.4)))  # 数字弹一下
+    d.text((x, y + 110), num, font=F(ns), fill=(255, 255, 255), stroke_width=5, stroke_fill=INK, anchor="lm")
+    w = d.textlength(num, font=F(ns)) + 10
     d.text((x + w, y + 128), "条", font=F(40), fill=(255, 255, 255), stroke_width=4, stroke_fill=INK, anchor="lm")
     lines = [f"时间: {'第%d天' % int(round(days)) if name != 'back' else '现在'}", f"相当于: {desc}", f"副作用: {side}"]
     for i, line in enumerate(lines):
@@ -547,7 +568,10 @@ def draw_caption(d, sc, lt):
     fs = 66
     while fs > 40 and max(d.textlength(l, font=F(fs)) for l in lines) > 1000: fs -= 2
     for i, line in enumerate(lines):
-        d.text((540, y0 + i * 82), line, font=F(fs), fill=(255, 226, 70), stroke_width=7, stroke_fill=(110, 70, 60), anchor="mm")
+        u = lt - i * 0.12  # 每行错开弹出
+        if u <= 0: continue
+        f2 = max(8, int(fs * back(u / 0.35)))
+        d.text((540, y0 + i * 82), line, font=F(f2), fill=(255, 226, 70), stroke_width=7, stroke_fill=(110, 70, 60), anchor="mm")
     ew = 28
     while ew > 20 and d.textlength(en, font=F(ew)) > 1020: ew -= 1
     d.text((540, y0 + len(lines) * 82 - 20), en, font=F(ew), fill=(255, 255, 255), stroke_width=3, stroke_fill=INK, anchor="mm")
@@ -574,14 +598,47 @@ def scene_at(gt):
     return 0
 
 
+def ambient(d, name, lt):
+    """背景里一直在动的小东西: 闪光星星 + 飘动的花瓣/灰尘."""
+    r = random.Random(len(name) * 97)
+    cols = [(255, 255, 255), (255, 214, 226), (214, 236, 255), (236, 222, 255)]
+    for i in range(16):  # 一闪一闪的星星
+        x, y = r.uniform(40, W - 40), r.uniform(150, 1400)
+        tw = max(0.0, math.sin(lt * r.uniform(2, 4) + r.uniform(0, 6)))
+        s0 = 6 + 14 * tw
+        if tw > 0.1:
+            c = r.choice(cols)
+            d.polygon([(x, y - s0), (x + s0 * 0.3, y), (x, y + s0), (x - s0 * 0.3, y)], fill=c)
+            d.polygon([(x - s0, y), (x, y + s0 * 0.3), (x + s0, y), (x, y - s0 * 0.3)], fill=c)
+    for i in range(14):  # 飘落的花瓣
+        sp = r.uniform(60, 140)
+        x = (r.uniform(0, W) + 40 * math.sin(lt * 1.3 + i)) % W
+        y = (r.uniform(0, H) + lt * sp) % H
+        a = lt * 2 + i
+        c = r.choice(cols[1:])
+        d.polygon([(x + 10 * math.cos(a), y + 10 * math.sin(a)), (x - 6 * math.sin(a), y + 6 * math.cos(a)),
+                   (x - 10 * math.cos(a), y - 10 * math.sin(a)), (x + 6 * math.sin(a), y - 6 * math.cos(a))], fill=c)
+
+
+SHAKE = {"t3": 7, "t100": 6, "t365": 5}
+
+
 def render_frame(fi):
     gt = fi / FPS
     i = scene_at(gt); sc = SCENES[i]; lt = gt - STARTS[i]; dur = sc[0]; name = sc[1]
     im = draw_scene(bg(BG_OF.get(name, name)).copy(), name, lt, dur)
-    if name not in ("end", "title"):
-        zoom = 1 + 0.04 * (lt / dur)
-        nw, nh = int(W * zoom), int(H * zoom)
-        im = im.resize((nw, nh), Image.BILINEAR).crop(((nw - W) // 2, (nh - H) // 2, (nw - W) // 2 + W, (nh - H) // 2 + H))
+    ambient(ImageDraw.Draw(im), name, lt)
+    # 镜头: 切场景冲进去再回弹 + 缓慢推近 + 手持晃动 + 大场面震屏
+    zoom = 1.04 + 0.05 * (lt / dur) + 0.12 * (1 - back(lt / 0.45))
+    sh = SHAKE.get(name, 0)
+    ox = 16 * math.sin(lt * 0.9 + i) + sh * math.sin(gt * 53)
+    oy = 10 * math.sin(lt * 1.3 + i * 2) + sh * math.cos(gt * 47)
+    if name in ("end", "title"):
+        zoom, ox, oy = 1.03 + 0.015 * math.sin(lt * 1.5), 8 * math.sin(lt), 6 * math.sin(lt * 1.4)
+    zoom = max(zoom, 1.02)
+    nw, nh = int(W * zoom), int(H * zoom)
+    cx0 = int(clamp((nw - W) / 2 + ox, 0, nw - W)); cy0 = int(clamp((nh - H) / 2 + oy, 0, nh - H))
+    im = im.resize((nw, nh), Image.BILINEAR).crop((cx0, cy0, cx0 + W, cy0 + H))
     d = ImageDraw.Draw(im)
     draw_hud(d, sc, lt, dur)
     draw_caption(d, sc, lt)
