@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 [ -d node_modules/three ] || npm install
 mkdir -p output && python3 make_audio.py
-rm -rf output/frames
+[ "${KEEP_FRAMES:-0}" = 1 ] || rm -rf output/frames
 node render.js frames 0 306 & node render.js frames 306 612 & node render.js frames 612 918 & node render.js frames 918 1224 & wait
 ffmpeg -y -v error -framerate 30 -i output/frames/f_%05d.jpg -i output/_audio.wav \
   -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p -movflags +faststart \
