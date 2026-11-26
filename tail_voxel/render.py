@@ -60,14 +60,14 @@ def vgrad(top, bot, h=H, w=W):
 
 
 # ---------------------------------------------------------------- 浅色系配色
-PC = dict(ear=(244, 160, 186), ear_in=(253, 214, 226), head_top=(255, 228, 236), head_side=(240, 180, 202),
-          head=(252, 210, 224), body=(250, 200, 216), body_side=(236, 170, 194), spot=(238, 172, 196),
-          paw=(255, 226, 236), eye=(70, 50, 70), white=(255, 255, 255), cheek=(250, 150, 180),
-          nose=(244, 130, 160), muzzle=(255, 222, 210), mouth=(200, 100, 130))
-WHISK = [(150, 140, 168), (188, 178, 206)]
-PINK, MINT, SKY, LAV, PEACH = (246, 132, 168), (120, 200, 170), (130, 184, 236), (176, 150, 220), (255, 170, 120)
-INK = (96, 66, 96)  # 浅底上的深色文字
-SHIRT, PANTS, SKIN, HAIR = (150, 212, 192), (140, 160, 206), (244, 206, 178), (120, 90, 76)
+PC = dict(ear=(234, 122, 160), ear_in=(250, 188, 208), head_top=(252, 210, 224), head_side=(226, 142, 176),
+          head=(246, 186, 208), body=(243, 174, 200), body_side=(222, 134, 170), spot=(224, 138, 174),
+          paw=(250, 204, 220), eye=(48, 30, 50), white=(255, 255, 255), cheek=(238, 104, 146),
+          nose=(230, 94, 136), muzzle=(250, 204, 192), mouth=(176, 66, 108))
+WHISK = [(112, 92, 124), (150, 128, 160)]
+PINK, MINT, SKY, LAV, PEACH = (232, 88, 136), (46, 164, 124), (70, 140, 214), (132, 100, 196), (240, 128, 64)
+INK = (66, 38, 66)  # 文字描边用的深紫
+SHIRT, PANTS, SKIN, HAIR = (64, 160, 146), (84, 102, 164), (236, 186, 148), (88, 58, 48)
 
 
 # ---------------------------------------------------------------- 灵动版粉色方块猫
@@ -130,7 +130,7 @@ def cat(d, cx, by, s, t, eyes="normal", mouth="w", look=0.0, tilt=0.0, head_dy=0
 
     ts = tails or {}
     tn, tm = ts.get("n", 1), ts.get("mode", "single" if not tails else "fan")
-    tcol = [PC["body_side"], (246, 190, 210)]
+    tcol = [PC["body_side"], (238, 164, 194)]
     if tm == "single":
         one_tail(745.0, 790.0, *tail)
     elif tm == "two":  # 一条开心竖着, 一条不耐烦地甩
@@ -332,15 +332,15 @@ def peacock(d, cx, by, t):
     for i in range(11):  # 尾屏
         a = math.pi + math.pi * i / 10 + 0.04 * math.sin(t * 2 + i)
         x, y = cx + 230 * math.cos(a), by - 170 + 200 * math.sin(a)
-        d.line([(cx, by - 150), (x, y)], fill=(170, 220, 210), width=10)
-        d.ellipse([x - 34, y - 40, x + 34, y + 40], fill=(150, 214, 200))
+        d.line([(cx, by - 150), (x, y)], fill=(110, 190, 176), width=10)
+        d.ellipse([x - 34, y - 40, x + 34, y + 40], fill=(84, 184, 164))
         d.ellipse([x - 16, y - 18, x + 16, y + 18], fill=(150, 184, 240))
-    cube(d, cx - 55, by - 170, 110, 120, 50, (150, 190, 240))
-    cube(d, cx - 22, by - 290, 44, 130, 26, (150, 190, 240))
-    cube(d, cx - 34, by - 340, 68, 60, 30, (150, 190, 240))
+    cube(d, cx - 55, by - 170, 110, 120, 50, (96, 146, 222))
+    cube(d, cx - 22, by - 290, 44, 130, 26, (96, 146, 222))
+    cube(d, cx - 34, by - 340, 68, 60, 30, (96, 146, 222))
     d.rectangle([cx - 14, by - 322, cx - 4, by - 312], fill=INK)
     d.polygon([(cx + 34, by - 318), (cx + 64, by - 308), (cx + 34, by - 300)], fill=(255, 210, 120))
-    for q in range(3): d.ellipse([cx - 20 + q * 16, by - 380, cx - 10 + q * 16, by - 370], fill=(150, 190, 240))
+    for q in range(3): d.ellipse([cx - 20 + q * 16, by - 380, cx - 10 + q * 16, by - 370], fill=(96, 146, 222))
     d.rectangle([cx - 30, by - 50, cx - 20, by], fill=(255, 200, 120)); d.rectangle([cx + 20, by - 50, cx + 30, by], fill=(255, 200, 120))
 
 
@@ -350,12 +350,12 @@ def fox(d, cx, by, s, t):
     for i in range(9):
         a = -math.pi * 0.92 + math.pi * 0.84 * i / 8 + 0.05 * math.sin(t * 2 + i)
         ex, ey = cx + 170 * k * math.cos(a), by - 90 * k + 170 * k * math.sin(a)
-        d.line([(cx, by - 90 * k), (ex, ey)], fill=(255, 206, 168), width=int(38 * k))
+        d.line([(cx, by - 90 * k), (ex, ey)], fill=(246, 168, 112), width=int(38 * k))
         d.ellipse([ex - 22 * k, ey - 22 * k, ex + 22 * k, ey + 22 * k], fill=(255, 250, 244))
-    cube(d, cx - 70 * k, by - 120 * k, 140 * k, 120 * k, 50 * k, (255, 196, 150))
-    cube(d, cx - 60 * k, by - 230 * k, 120 * k, 100 * k, 50 * k, (255, 196, 150))
+    cube(d, cx - 70 * k, by - 120 * k, 140 * k, 120 * k, 50 * k, (242, 150, 90))
+    cube(d, cx - 60 * k, by - 230 * k, 120 * k, 100 * k, 50 * k, (242, 150, 90))
     for sg in (-1, 1):
-        d.polygon([(cx + sg * 60 * k, by - 230 * k), (cx + sg * 20 * k, by - 230 * k), (cx + sg * 50 * k, by - 300 * k)], fill=(255, 186, 140))
+        d.polygon([(cx + sg * 60 * k, by - 230 * k), (cx + sg * 20 * k, by - 230 * k), (cx + sg * 50 * k, by - 300 * k)], fill=(232, 130, 76))
     d.rectangle([cx - 30 * k, by - 160 * k, cx + 30 * k, by - 135 * k], fill=(255, 250, 244))
     for sg in (-1, 1):
         d.line([(cx + sg * 40 * k, by - 190 * k), (cx + sg * 16 * k, by - 186 * k)], fill=INK, width=max(3, int(6 * k)))
@@ -396,48 +396,48 @@ def bg(name):
     if name in _bg: return _bg[name]
     rnd = random.Random(len(name) * 31)
     if name == "garden":
-        im = vgrad((214, 238, 252), (238, 248, 255)); d = ImageDraw.Draw(im)
+        im = vgrad((134, 190, 238), (196, 226, 248)); d = ImageDraw.Draw(im)
         for cx, cy in ((200, 360), (820, 520)):
             for j in range(4): cube(d, cx - 140 + j * 70, cy - 30 * (j % 2), 110, 56, 36, (255, 255, 255))
-        d.rectangle([0, 1200, W, H], fill=(206, 238, 206))
+        d.rectangle([0, 1200, W, H], fill=(140, 200, 136))
         for _ in range(60):
             x, y = rnd.randrange(W), rnd.randrange(1230, H)
-            c = rnd.choice([(255, 200, 214), (255, 236, 170), (220, 206, 250), (255, 255, 255)])
+            c = rnd.choice([(246, 140, 170), (250, 206, 96), (170, 140, 230), (255, 255, 255)])
             for q in range(4):
                 a = q * math.pi / 2
                 d.ellipse([x + 10 * math.cos(a) - 8, y + 10 * math.sin(a) - 8, x + 10 * math.cos(a) + 8, y + 10 * math.sin(a) + 8], fill=c)
             d.ellipse([x - 6, y - 6, x + 6, y + 6], fill=(255, 220, 120))
     elif name == "town":
-        im = vgrad((196, 228, 250), (232, 244, 252)); d = ImageDraw.Draw(im)
-        cols = [(255, 214, 220), (214, 232, 255), (255, 240, 200), (214, 244, 226), (232, 220, 250)]
+        im = vgrad((126, 180, 232), (192, 220, 246)); d = ImageDraw.Draw(im)
+        cols = [(242, 156, 172), (150, 188, 238), (246, 204, 120), (132, 200, 164), (186, 162, 232)]
         for b in range(7):
             x = b * 160 - 40; top = rnd.randint(500, 860)
             cube(d, x, top, 140, 1300 - top, 60, cols[b % 5])
             for wy in range(top + 40, 1260, 90):
                 for wx in range(x + 20, x + 130, 50):
                     d.rectangle([wx, wy, wx + 26, wy + 40], fill=(255, 255, 255))
-        d.rectangle([0, 1300, W, H], fill=(226, 226, 234))
+        d.rectangle([0, 1300, W, H], fill=(176, 178, 198))
         for x in range(0, W, 180): d.rectangle([x, 1600, x + 100, 1616], fill=(255, 255, 255))
     elif name == "glow":
-        im = vgrad((255, 238, 220), (255, 220, 232)); d = ImageDraw.Draw(im)
+        im = vgrad((252, 186, 140), (240, 150, 182)); d = ImageDraw.Draw(im)
         for i in range(24):  # 柔和光芒
             a = 2 * math.pi * i / 24
             d.polygon([(540, 1150), (540 + 1400 * math.cos(a), 1150 + 1400 * math.sin(a)),
-                       (540 + 1400 * math.cos(a + 0.12), 1150 + 1400 * math.sin(a + 0.12))], fill=(255, 244, 232))
-        d.rectangle([0, 1560, W, H], fill=(250, 226, 214))
+                       (540 + 1400 * math.cos(a + 0.12), 1150 + 1400 * math.sin(a + 0.12))], fill=(255, 208, 170))
+        d.rectangle([0, 1560, W, H], fill=(226, 150, 150))
     elif name == "why":
-        im = vgrad((244, 236, 252), (230, 222, 248))
+        im = vgrad((206, 186, 240), (176, 152, 226))
     elif name == "end":
-        im = vgrad((255, 244, 248), (252, 232, 240))
+        im = vgrad((250, 196, 216), (238, 166, 196))
     else:  # room: 浅桃色卧室
-        im = vgrad((255, 244, 236), (252, 232, 222)); d = ImageDraw.Draw(im)
-        d.rectangle([0, 1180, W, H], fill=(242, 220, 198))
-        for y in range(1180, H, 70): d.line([0, y, W, y], fill=(230, 204, 180), width=4)
-        d.rectangle([690, 170, 1000, 520], fill=(206, 232, 252), outline=(236, 206, 186), width=16)
-        d.line([845, 170, 845, 520], fill=(236, 206, 186), width=10)
-        cube(d, 900, 900, 70, 100, 40, (255, 214, 200))            # 花盆
-        for q in range(3): cube(d, 890 + q * 30, 830 - q * 20, 26, 70, 16, (150, 210, 170))
-        cube(d, 760, 1000, 260, 70, 90, (236, 214, 248))           # 淡紫色矮柜
+        im = vgrad((250, 206, 176), (238, 176, 150)); d = ImageDraw.Draw(im)
+        d.rectangle([0, 1180, W, H], fill=(206, 150, 112))
+        for y in range(1180, H, 70): d.line([0, y, W, y], fill=(186, 132, 98), width=4)
+        d.rectangle([690, 170, 1000, 520], fill=(150, 200, 238), outline=(196, 130, 100), width=16)
+        d.line([845, 170, 845, 520], fill=(196, 130, 100), width=10)
+        cube(d, 900, 900, 70, 100, 40, (232, 132, 112))            # 花盆
+        for q in range(3): cube(d, 890 + q * 30, 830 - q * 20, 26, 70, 16, (82, 160, 112))
+        cube(d, 760, 1000, 260, 70, 90, (170, 140, 214))           # 紫色矮柜
     _bg[name] = im
     return im
 
@@ -468,7 +468,7 @@ def draw_scene(im, name, lt, dur):
         pop(d, 500, 860, "?", 110, LAV, lt, 1.6)
     elif name == "t3":
         cw = 30 * math.sin(lt * 9)  # 窗帘被吹
-        d.polygon([(690, 170), (760 + cw, 170), (800 + cw * 2, 520), (690, 520)], fill=(255, 214, 226))
+        d.polygon([(690, 170), (760 + cw, 170), (800 + cw * 2, 520), (690, 520)], fill=(240, 150, 180))
         person(d, 220, 1650, 130, t=lt, face="shock")
         for q in range(5):  # 被吹乱的头发
             d.line([(160 + q * 24, 1255), (110 + q * 20 - 20 * math.sin(lt * 10 + q), 1225)], fill=HAIR, width=10)
@@ -528,10 +528,10 @@ def draw_scene(im, name, lt, dur):
         heart_burst(d, lt, 12, 700, 1150, 260, 5, size=(22, 50))
     elif name == "end":
         a = ease(lt / 0.8)
-        text_c(d, (540, 800), "一条尾巴就够了", 66, fill=mix((255, 244, 248), PINK, a))
-        text_c(d, (540, 930), "你家猫见到你，尾巴是竖着的吗？", 56, fill=mix((255, 244, 248), INK, a))
+        text_c(d, (540, 800), "一条尾巴就够了", 66, fill=mix((250, 196, 216), (255, 255, 255), a))
+        text_c(d, (540, 930), "你家猫见到你，尾巴是竖着的吗？", 56, fill=mix((250, 196, 216), INK, a))
         if lt > 1.0:
-            text_c(d, (540, 1050), "评论区告诉我 ↓", 58, fill=mix((255, 244, 248), PEACH, clamp((lt - 1) / 0.4)))
+            text_c(d, (540, 1050), "评论区告诉我 ↓", 58, fill=mix((250, 196, 216), (150, 40, 90), clamp((lt - 1) / 0.4)))
         heart(d, 540, 1200, 70 * a + 1, PINK)
         cat(d, 540, 1620, 200, lt, hop=0.6, wh=dict(n=12, L=120), tail=(-1.75, 0.3, 1.0))
     return im
