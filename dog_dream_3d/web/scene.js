@@ -62,7 +62,7 @@ composer.addPass(grade);
 const G = grade.uniforms;
 const out = document.getElementById('out'); const ctx = out.getContext('2d');
 
-const hemi = new THREE.HemisphereLight('#fff2f6', '#c99bb8', 1.5); scene.add(hemi);
+const hemi = new THREE.HemisphereLight('#fffaf2', '#d6c6a6', 1.5); scene.add(hemi);
 const sun = new THREE.DirectionalLight('#fff0e0', 2.3); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.radius = 5; sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.03;
 scene.add(sun, sun.target);
@@ -83,21 +83,21 @@ const curtains = [];
 const bed = new THREE.Group(); room.add(bed);
 {
   const plank = canvasTex(512, 512, (g, w, h) => {
-    g.fillStyle = '#c47a45'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#ecc797'; g.fillRect(0, 0, w, h);
     const r = rng(3);
     for (let y = 0; y < h; y += 64) { g.fillStyle = `rgba(150,90,60,${0.15 + r() * 0.15})`; g.fillRect(0, y, w, 4); for (let k = 0; k < 6; k++) { g.fillStyle = 'rgba(255,230,200,0.12)'; g.fillRect(r() * w, y + 10 + r() * 40, 80 + r() * 120, 3); } }
   });
   plank.wrapS = plank.wrapT = THREE.RepeatWrapping; plank.repeat.set(3, 3);
   const floor = mesh(new THREE.PlaneGeometry(16, 16), std('#ffffff', { map: plank }), false, true); floor.rotation.x = -Math.PI / 2; room.add(floor);
-  const backW = mesh(new THREE.PlaneGeometry(16, 9), std('#e2648f'), false, true); backW.position.set(0, 4.5, -3.4); room.add(backW);
-  const leftW = mesh(new THREE.PlaneGeometry(10, 9), std('#8a62d6'), false, true); leftW.rotation.y = Math.PI / 2; leftW.position.set(-3.6, 4.5, 1.6); room.add(leftW);
-  const rightW = mesh(new THREE.PlaneGeometry(10, 9), std('#8a62d6'), false, true); rightW.rotation.y = -Math.PI / 2; rightW.position.set(3.8, 4.5, 1.6); room.add(rightW);
+  const backW = mesh(new THREE.PlaneGeometry(16, 9), std('#d4f6e8'), false, true); backW.position.set(0, 4.5, -3.4); room.add(backW);
+  const leftW = mesh(new THREE.PlaneGeometry(10, 9), std('#cfe9fb'), false, true); leftW.rotation.y = Math.PI / 2; leftW.position.set(-3.6, 4.5, 1.6); room.add(leftW);
+  const rightW = mesh(new THREE.PlaneGeometry(10, 9), std('#cfe9fb'), false, true); rightW.rotation.y = -Math.PI / 2; rightW.position.set(3.8, 4.5, 1.6); room.add(rightW);
   // 窗外: 黄昏的马卡龙小城 + 月亮
   const skyline = canvasTex(512, 384, (g, w, h) => {
-    const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#9b8cf0'); gr.addColorStop(0.6, '#f5a8c8'); gr.addColorStop(1, '#ffd9b0'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#8fc4f2'); gr.addColorStop(0.6, '#cfe8fa'); gr.addColorStop(1, '#ffe6c4'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
     g.fillStyle = '#fff6d8'; g.beginPath(); g.arc(400, 80, 38, 0, 7); g.fill();
-    g.fillStyle = '#b9a5f2'; g.beginPath(); g.arc(386, 70, 32, 0, 7); g.fill();
-    const r = rng(9), cols = ['#f39cb4', '#9cbcf0', '#f6cf78', '#89cfa6', '#bba3ea'];
+    g.fillStyle = '#9fcdf4'; g.beginPath(); g.arc(386, 70, 32, 0, 7); g.fill();
+    const r = rng(9), cols = ['#ffc4a8', '#b4dcf6', '#ffe49a', '#b6e8cf', '#ffd0dc'];
     for (let i = 0; i < 18; i++) { g.fillStyle = '#fffbe8'; g.fillRect(r() * w, r() * 150, 4, 4); }
     for (let x = 0; x < w; x += 46) { const bh = 90 + r() * 170; g.fillStyle = cols[(x / 46) % 5 | 0]; g.fillRect(x, h - bh, 42, bh);
       g.fillStyle = 'rgba(255,240,170,0.95)'; for (let wy = h - bh + 14; wy < h - 10; wy += 26) for (let wx = x + 6; wx < x + 36; wx += 14) if (r() < 0.7) g.fillRect(wx, wy, 7, 12); }
@@ -108,21 +108,21 @@ const bed = new THREE.Group(); room.add(bed);
   }
   for (const x of [-0.25, 3.05]) {   // 窗帘 (会飘)
     const piv = new THREE.Group(); piv.position.set(x, 4.35, -3.2); room.add(piv);
-    const c = box(0.55, 2.5, 0.08, '#ffb21f', 0.04); c.position.y = -1.25; piv.add(c);
+    const c = box(0.55, 2.5, 0.08, '#ffd3b8', 0.04); c.position.y = -1.25; piv.add(c);
     curtains.push(piv);
   }
-  const sofaM = std('#2fa8a0');
+  const sofaM = std('#a6d2f2');
   const sb = box(3.0, 0.7, 1.2, sofaM, 0.12); sb.position.set(-1.7, 0.45, -2.6); room.add(sb);
   const sr = box(3.0, 1.0, 0.4, sofaM, 0.12); sr.position.set(-1.7, 1.2, -3.1); room.add(sr);
   for (const x of [-3.25, -0.15]) { const a = box(0.4, 1.1, 1.2, sofaM, 0.12); a.position.set(x, 0.55, -2.6); room.add(a); }
-  for (const x of [-2.4, -1.0]) { const c = box(1.2, 0.25, 1.0, '#ffd23f', 0.1); c.position.set(x, 0.92, -2.5); room.add(c); }
+  for (const x of [-2.4, -1.0]) { const c = box(1.2, 0.25, 1.0, '#fff2c4', 0.1); c.position.set(x, 0.92, -2.5); room.add(c); }
   const pot = box(0.5, 0.5, 0.5, '#ec8a74', 0.06); pot.position.set(3.1, 0.25, -2.5); room.add(pot);
   for (let i = 0; i < 6; i++) { const l = box(0.13, 0.8, 0.13, '#5aae73', 0.04); l.position.set(2.98 + i * 0.05, 0.85, -2.5); l.rotation.z = -0.6 + i * 0.24; room.add(l); }
-  const rug = mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.03, 48), std('#ff6f9e'), false, true); rug.position.set(0.1, 0.015, 0.4); room.add(rug);
+  const rug = mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.03, 48), std('#fff0b0'), false, true); rug.position.set(0.1, 0.015, 0.4); room.add(rug);
   // 狗窝: 紫色底座 + 奶白坐垫 + 圆环边
-  const base = mesh(new THREE.CylinderGeometry(1.55, 1.6, 0.22, 40), std('#6a48d0')); base.position.y = 0.11; bed.add(base);
-  const cush = mesh(new THREE.CylinderGeometry(1.3, 1.3, 0.1, 40), std('#ffd84a')); cush.position.y = 0.25; bed.add(cush);
-  const rim = mesh(new THREE.TorusGeometry(1.4, 0.24, 16, 48), std('#8a66f0')); rim.rotation.x = Math.PI / 2; rim.position.y = 0.32; bed.add(rim);
+  const base = mesh(new THREE.CylinderGeometry(1.55, 1.6, 0.22, 40), std('#9fd0f2')); base.position.y = 0.11; bed.add(base);
+  const cush = mesh(new THREE.CylinderGeometry(1.3, 1.3, 0.1, 40), std('#fff8e6')); cush.position.y = 0.25; bed.add(cush);
+  const rim = mesh(new THREE.TorusGeometry(1.4, 0.24, 16, 48), std('#a9e4cf')); rim.rotation.x = Math.PI / 2; rim.position.y = 0.32; bed.add(rim);
   // 食盆 + 玩具球
   const bowl = mesh(new THREE.CylinderGeometry(0.34, 0.26, 0.2, 32), std('#7fb6ec')); bowl.position.set(2.3, 0.1, 1.6); room.add(bowl);
   const toy = mesh(new THREE.SphereGeometry(0.22, 24, 16), std('#ffd34d', { roughness: 0.5 })); toy.position.set(-1.9, 0.22, 1.5); room.add(toy);
@@ -133,13 +133,13 @@ const dream = new THREE.Group(); scene.add(dream);
 const clouds = [], farGroup = new THREE.Group(); dream.add(farGroup);
 {
   const grass = canvasTex(256, 256, (g, w, h) => {
-    g.fillStyle = '#5cc24e'; g.fillRect(0, 0, w, h); const r = rng(21);
-    for (let i = 0; i < 260; i++) { g.fillStyle = r() < 0.5 ? 'rgba(60,160,60,0.6)' : 'rgba(160,230,120,0.6)'; g.fillRect(r() * w, r() * h, 3, 9); }
+    g.fillStyle = '#b6e6a0'; g.fillRect(0, 0, w, h); const r = rng(21);
+    for (let i = 0; i < 260; i++) { g.fillStyle = r() < 0.5 ? 'rgba(140,210,120,0.6)' : 'rgba(215,245,190,0.7)'; g.fillRect(r() * w, r() * h, 3, 9); }
   });
   grass.wrapS = grass.wrapT = THREE.RepeatWrapping; grass.repeat.set(60, 60);
   const ground = mesh(new THREE.PlaneGeometry(300, 300), std('#ffffff', { map: grass }), false, true); ground.rotation.x = -Math.PI / 2; ground.position.x = 50; dream.add(ground);
-  const path = mesh(new THREE.PlaneGeometry(300, 2.4), std('#f5b95a'), false, true); path.rotation.x = -Math.PI / 2; path.position.set(50, 0.01, 0); dream.add(path);
-  const r = rng(33), cc = ['#ff4f8f', '#2fa8f0', '#ffcc1f', '#8f5cf0', '#ff7a3d', '#22c49a'];
+  const path = mesh(new THREE.PlaneGeometry(300, 2.4), std('#fbe8c0'), false, true); path.rotation.x = -Math.PI / 2; path.position.set(50, 0.01, 0); dream.add(path);
+  const r = rng(33), cc = ['#ffc2d0', '#a8d8f8', '#ffe596', '#c8e9b0', '#ffcfae', '#b5ecd8'];
   for (let x = -20; x < 120; x += 2.6 + r() * 2) {      // 棒棒糖树
     const z = -4.5 - r() * 9, hgt = 1.4 + r() * 1.4;
     const tr = box(0.22, hgt, 0.22, '#c48a5c', 0.05); tr.position.set(x, hgt / 2, z); dream.add(tr);
@@ -157,10 +157,10 @@ const clouds = [], farGroup = new THREE.Group(); dream.add(farGroup);
     clouds.push(c);
   }
   // 远景: 小山 + 彩虹 (跟着镜头, 形成视差)
-  for (const [x, s, c] of [[-30, 18, '#3fae5a'], [0, 24, '#6cc95a'], [32, 20, '#4fbb63'], [60, 22, '#7fd36a']]) {
+  for (const [x, s, c] of [[-30, 18, '#a8dc95'], [0, 24, '#c2eaa8'], [32, 20, '#b0e09c'], [60, 22, '#cdeeb2']]) {
     const h = mesh(new THREE.SphereGeometry(1, 32, 16), std(c), false, true); h.scale.set(s, s * 0.32, s * 0.6); h.position.set(x, -1, -60); farGroup.add(h);
   }
-  ['#ff4f6f', '#ff9a2e', '#ffd92e', '#4fd06a', '#3a9cf0', '#8a5cf0'].forEach((c, i) => {
+  ['#ffb3b8', '#ffd0a6', '#fff0a6', '#c4ecb4', '#b0dcf8', '#d6c8f4'].forEach((c, i) => {
     const t = new THREE.Mesh(new THREE.TorusGeometry(26 - i * 1.1, 0.55, 8, 64, Math.PI), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.85 }));
     t.position.set(6, -2, -80); farGroup.add(t);
   });
@@ -176,7 +176,7 @@ bubbles.forEach(b => scene.add(b.root));
 const trail = [0.07, 0.11, 0.16].map(r => { const b = makeBubble(r); scene.add(b.root); return b; });
 const mk = (fn) => { const g = new THREE.Group(); fn(g); g.traverse(o => { if (o.isMesh) o.castShadow = true; }); return g; };
 const makeFrisbee = () => mk(g => {
-  const d = mesh(new THREE.CylinderGeometry(0.36, 0.33, 0.06, 32), std('#ff3d7f')); g.add(d);
+  const d = mesh(new THREE.CylinderGeometry(0.36, 0.33, 0.06, 32), std('#7cc6f2')); g.add(d);
   const r = mesh(new THREE.TorusGeometry(0.34, 0.035, 8, 32), std('#ffd34d')); r.rotation.x = Math.PI / 2; g.add(r);
 });
 const makeBall = () => mk(g => { g.add(mesh(new THREE.SphereGeometry(0.3, 28, 18), std('#ffd34d', { roughness: 0.45 })));
@@ -302,8 +302,8 @@ function setup(name, lt, dur, gt) {
   cat.root.position.set(0, 0, 0); cat.root.rotation.set(0, 0, 0); cat.root.scale.setScalar(1);
   dog.root.position.set(0, 0, 0); dog.root.rotation.set(0, 0, 0); dog.root.scale.setScalar(1);
   bed.position.set(DOG_BED.x, 0, DOG_BED.z); bed.rotation.set(0, 0, 0);
-  G.uDream.value = 0; G.uWob.value = 0; G.uVig.value = 0.25; bloom.strength = 0.18;
-  hemi.intensity = 1.5; hemi.color.set('#fff2f6'); sun.intensity = 2.3; setSun(0, 0);
+  G.uDream.value = 0; G.uWob.value = 0; G.uVig.value = 0.1; bloom.strength = 0.18;
+  hemi.intensity = 1.85; hemi.color.set('#fffaf2'); sun.intensity = 2.4; setSun(0, 0);
   setSky('#79b6f0', '#cfe6fb');
   sparkle.position.set(0, 0, 0); petals.position.set(0, 0, 0);
   curtains.forEach((c, i) => { c.rotation.x = 0.08 + 0.06 * Math.sin(gt * 1.4 + i * 1.3); c.rotation.z = 0.04 * Math.sin(gt * 1.1 + i); });
@@ -342,7 +342,7 @@ function setup(name, lt, dur, gt) {
     case 'field': case 'cat': case 'rain': {
       room.visible = false; dream.visible = true;
       G.uDream.value = 1; G.uWob.value = 0.25 + 1.6 * (1 - smooth(lt / 0.9)); bloom.strength = 0.28;
-      setSky('#6f52e0', '#ff8cc0'); hemi.color.set('#fff0fa'); hemi.intensity = 1.5;
+      setSky('#86c8f8', '#ffe8cc'); hemi.color.set('#fffaf2'); hemi.intensity = 1.5;
       clouds.forEach((c, i) => { c.position.x = -20 + i * 12 + ((gt * 0.6) % 12); });
       let dx = 0, camX = 0;
       if (name === 'field') {
@@ -408,7 +408,7 @@ function setup(name, lt, dur, gt) {
       break;
     }
     case 'why': {
-      room.visible = false; stage.visible = true; stage.material.color.set('#9a74f0'); setSky('#5a3cc8', '#b28cf0');
+      room.visible = false; stage.visible = true; stage.material.color.set('#bfeadb'); setSky('#9fd8c6', '#e4f7ef');
       dog.root.position.set(0, 0, 0.3); dog.root.rotation.y = 0.6 + 0.15 * Math.sin(lt * 0.7);
       dog.update(gt, { lie: 1, eyes: 'sleep', rem: true, paddle: 0.35, wag: 0.25, dropY: drop(lt) });
       ['快速眼动期：眼皮抖、爪子抽', '科学家推测：梦的多半是白天的事', '小型犬做梦更勤，每次更短', '“每分钟一个梦”是夸张效果']
@@ -441,7 +441,7 @@ function setup(name, lt, dur, gt) {
       break;
     }
     case 'end': {
-      room.visible = false; stage.visible = true; stage.material.color.set('#ff6f9e'); setSky('#e83f7f', '#ff9cc4');
+      room.visible = false; stage.visible = true; stage.material.color.set('#ffe6a0'); setSky('#ffd27e', '#fff3d2');
       dog.root.scale.setScalar(0.8); dog.root.rotation.y = 0.3 * Math.sin(lt * 1.2);
       dog.update(gt, { hop: 0.6, eyes: 'happy', tongue: true, wag: 1, yaw: 0.35 * Math.sin(lt * 2), tilt: 0.15 * Math.sin(lt * 2.5), perk: 0.3 });
       hearts.forEach((h, i) => { h.visible = true; const q = (lt * 0.35 + i / 14) % 1;
