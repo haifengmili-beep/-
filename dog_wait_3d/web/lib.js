@@ -249,271 +249,203 @@ export function makeCat() {
   return api;
 }
 
-// ------------------------------------------------------------------ 主人: 方块风女生 (长发 + 发卡 + 连衣裙, 大眼睛)
-function drawGirlFace(g, s) {
-  const w = 300, h = 280; g.clearRect(0, 0, w, h);
-  // 腮红
-  g.fillStyle = 'rgba(246,128,150,0.55)';
-  for (const x of [52, 248]) { g.beginPath(); g.ellipse(x, 190, 30, 15, 0, 0, 7); g.fill(); }
-  for (const [ex, sx] of [[95, -1], [205, 1]]) {
-    const ey = 140;
-    if (s.blink) {   // 闭眼: 弯弯的线 + 睫毛
-      g.strokeStyle = '#3a2230'; g.lineWidth = 7; g.lineCap = 'round';
-      g.beginPath(); g.arc(ex, ey - 6, 26, 0.15 * Math.PI, 0.85 * Math.PI); g.stroke();
-      continue;
-    }
-    const k = s.shock ? 1.15 : 1;
-    // 眼白 + 棕色瞳孔 + 黑瞳 + 两个高光
-    g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(ex, ey, 30 * k, 38 * k, 0, 0, 7); g.fill();
-    g.fillStyle = '#7a4a3a'; g.beginPath(); g.ellipse(ex + s.look * 5, ey + 4, 24 * k, 32 * k, 0, 0, 7); g.fill();
-    g.fillStyle = '#2b1820'; g.beginPath(); g.ellipse(ex + s.look * 5, ey + 6, s.shock ? 9 : 14, s.shock ? 12 : 19, 0, 0, 7); g.fill();
-    g.fillStyle = '#ffffff';
-    g.beginPath(); g.ellipse(ex - 9 + s.look * 5, ey - 10, 9, 11, 0, 0, 7); g.fill();
-    g.beginPath(); g.arc(ex + 10 + s.look * 5, ey + 18, 4.5, 0, 7); g.fill();
-    // 上眼线 + 睫毛
-    g.strokeStyle = '#2b1820'; g.lineWidth = 7; g.lineCap = 'round';
-    g.beginPath(); g.ellipse(ex, ey, 31 * k, 39 * k, 0, 1.15 * Math.PI, 1.85 * Math.PI); g.stroke();
-    g.lineWidth = 5;
-    g.beginPath(); g.moveTo(ex + sx * 26, ey - 28); g.lineTo(ex + sx * 40, ey - 40); g.stroke();
-    g.beginPath(); g.moveTo(ex + sx * 30, ey - 18); g.lineTo(ex + sx * 44, ey - 24); g.stroke();
-  }
-  // 眉毛 + 嘴
-  g.strokeStyle = '#6b4134'; g.lineWidth = 6; g.lineCap = 'round';
-  for (const ex of [95, 205]) { g.beginPath(); g.moveTo(ex - 22, s.shock ? 70 : 80); g.quadraticCurveTo(ex, s.shock ? 60 : 72, ex + 22, s.shock ? 70 : 80); g.stroke(); }
-  if (s.shock) { g.fillStyle = '#c8506a'; g.beginPath(); g.ellipse(150, 226, 13, 17, 0, 0, 7); g.fill(); }
-  else { g.strokeStyle = '#d2556f'; g.lineWidth = 7; g.beginPath(); g.arc(150, 206, 20, 0.2 * Math.PI, 0.8 * Math.PI); g.stroke(); }
-}
 
-export function makePerson() {
-  const root = new THREE.Group();
-  const dress = std('#3fb0a0'), dressDk = std('#2f9384'), skin = std('#f7d3bd'), hair = std('#6b4134'), hairHi = std('#85533f');
-  const white = std('#ffffff'), shoe = std('#f27aa0'), bow = std('#ff7aa6');
-  // 腿 + 鞋
-  for (const sx of [-1, 1]) {
-    const l = box(0.2, 0.78, 0.22, skin, 0.06); l.position.set(sx * 0.17, 0.46, 0); root.add(l);
-    const sh = box(0.26, 0.14, 0.34, shoe, 0.05); sh.position.set(sx * 0.17, 0.07, 0.05); root.add(sh);
+// 体素风 (按用户给的两张图): 棱角分明的方块, 只留一点点圆角
+const vox = (w, h, d, color) => box(w, h, d, color, 0.012);
+
+// ------------------------------------------------------------------ 主人: 体素风女生 (按用户图: 棕色齐刘海 + 两侧长发 + 粉色发圈, 大眼睛, 粉色上衣 + 红领结, 两层粉裙, 粉鞋)
+export const GIRL = { skin: '#f9dbc6', hair: '#7a4730', hairDk: '#4a2618', top: '#e08aa0', collar: '#ece6e8', tie: '#a8304f',
+  skirtHi: '#ffb3c8', skirt: '#ff8fae', hem: '#fff6ec', sock: '#e9e4e6', shoe: '#ff86a6', tieHair: '#f06a92' };
+function drawGirlFace(g, s) {
+  const w = 300, h = 260; g.clearRect(0, 0, w, h);
+  // 腮红
+  g.fillStyle = '#ff8fab';
+  g.fillRect(26, 178, 62, 22); g.fillRect(212, 178, 62, 22);
+  for (const [ex, sx] of [[96, -1], [204, 1]]) {
+    const top = 104;
+    if (s.blink) { g.fillStyle = '#2b1810'; g.fillRect(ex - 34, top + 34, 68, 10); g.fillRect(ex + sx * 30, top + 26, 12, 10); continue; }
+    const k = s.shock ? 1.12 : 1, ew = 58 * k, eh = 74 * k, x0 = ex - ew / 2, lx = s.look * 4;
+    g.fillStyle = '#2e1a12'; g.fillRect(x0, top, ew, eh * 0.6);                    // 上半深色
+    g.fillStyle = '#8a4e2c'; g.fillRect(x0, top + eh * 0.6, ew, eh * 0.4);        // 下半棕色虹膜
+    g.fillStyle = '#2e1a12'; g.fillRect(x0 - 4, top + eh - 4, ew + 8, 4);
+    g.fillStyle = '#ffffff'; g.fillRect(ex + 2 + lx, top + 10, 20, 20);             // 大高光
+    g.fillRect(x0 + 6 + lx, top + eh * 0.66, 10, 10);                               // 小高光
+    // 上眼线 + 外侧翘起的睫毛
+    g.fillStyle = '#1f120c'; g.fillRect(x0 - 8, top - 10, ew + 16, 12);
+    g.fillRect(sx < 0 ? x0 - 18 : x0 + ew + 4, top - 18, 14, 12);
+    // 眉毛
+    g.fillStyle = '#5a3020'; g.fillRect(ex - 22, s.shock ? 64 : 72, 44, 8);
   }
-  // 连衣裙: 伞形裙摆 + 上身 + 白领子 + 腰带
-  const skirt = mesh(new THREE.CylinderGeometry(0.42, 0.72, 0.8, 8, 1), dress); skirt.rotation.y = Math.PI / 8; skirt.position.y = 1.15; root.add(skirt);
-  const belt = mesh(new THREE.CylinderGeometry(0.43, 0.43, 0.1, 8, 1), dressDk); belt.rotation.y = Math.PI / 8; belt.position.y = 1.56; root.add(belt);
-  const torso = box(0.78, 0.62, 0.46, dress, 0.12); torso.position.y = 1.9; root.add(torso);
-  for (const sx of [-1, 1]) { const c = box(0.26, 0.1, 0.06, white, 0.03); c.position.set(sx * 0.13, 2.18, 0.23); c.rotation.z = -sx * 0.35; root.add(c); }
-  const neck = box(0.18, 0.14, 0.16, skin, 0.04); neck.position.y = 2.25; root.add(neck);
-  // 手臂: 泡泡袖 + 手臂 + 手
+  // 嘴: 小小的张嘴 (深红 + 粉色舌头)
+  if (s.shock) { g.fillStyle = '#a83c52'; g.fillRect(132, 200, 36, 30); g.fillStyle = '#ff9fb2'; g.fillRect(140, 218, 20, 10); }
+  else if (s.smile) { g.fillStyle = '#a83c52'; g.fillRect(132, 202, 36, 14); g.fillStyle = '#ff9fb2'; g.fillRect(140, 210, 20, 6); }
+  else { g.fillStyle = '#a83c52'; g.fillRect(138, 204, 24, 14); g.fillStyle = '#ff9fb2'; g.fillRect(143, 211, 14, 7); }
+}
+export function makePerson() {
+  const root = new THREE.Group(), C = GIRL;
+  const body = new THREE.Group(); root.add(body); body.scale.setScalar(1.12);
+  for (const sx of [-1, 1]) {
+    const sh = vox(0.26, 0.18, 0.32, C.shoe); sh.position.set(sx * 0.15, 0.09, 0.02); body.add(sh);
+    const so = vox(0.22, 0.16, 0.24, C.sock); so.position.set(sx * 0.15, 0.26, 0); body.add(so);
+    const lg = vox(0.18, 0.34, 0.2, C.skin); lg.position.set(sx * 0.15, 0.5, 0); body.add(lg);
+  }
+  const hem = vox(0.9, 0.06, 0.64, C.hem); hem.position.y = 0.65; body.add(hem);
+  const sk1 = vox(0.86, 0.3, 0.62, C.skirt); sk1.position.y = 0.83; body.add(sk1);
+  const sk2 = vox(0.74, 0.24, 0.54, C.skirtHi); sk2.position.y = 1.1; body.add(sk2);
+  const torso = vox(0.62, 0.48, 0.42, C.top); torso.position.y = 1.44; body.add(torso);
+  const col = vox(0.34, 0.07, 0.06, C.collar); col.position.set(0, 1.63, 0.2); body.add(col);
+  for (const sx of [-1, 1]) { const b = vox(0.12, 0.1, 0.05, C.tie); b.position.set(sx * 0.08, 1.54, 0.23); body.add(b); }
+  const knot = vox(0.05, 0.07, 0.06, '#7e1f3a'); knot.position.set(0, 1.54, 0.24); body.add(knot);
+  const neck = vox(0.16, 0.1, 0.16, C.skin); neck.position.y = 1.72; body.add(neck);
   const arms = [];
   for (const sx of [-1, 1]) {
-    const piv = new THREE.Group(); piv.position.set(sx * 0.48, 2.12, 0); root.add(piv);
-    const sl = box(0.28, 0.28, 0.3, dress, 0.1); sl.position.y = -0.08; piv.add(sl);
-    const a = box(0.16, 0.62, 0.18, skin, 0.06); a.position.y = -0.48; piv.add(a);
-    const hnd = box(0.18, 0.16, 0.2, skin, 0.06); hnd.position.y = -0.84; piv.add(hnd);
+    const piv = new THREE.Group(); piv.position.set(sx * 0.4, 1.6, 0); body.add(piv);
+    const sl = vox(0.2, 0.2, 0.24, C.top); sl.position.y = -0.06; piv.add(sl);
+    const a = vox(0.13, 0.4, 0.15, C.skin); a.position.y = -0.34; piv.add(a);
+    const hnd = vox(0.15, 0.13, 0.17, C.skin); hnd.position.y = -0.58; piv.add(hnd);
     arms.push(piv);
   }
-  // 头 + 脸贴图
-  const headG = new THREE.Group(); headG.position.y = 2.3; root.add(headG);
-  const h = box(0.84, 0.8, 0.76, skin, 0.1); h.position.y = 0.42; headG.add(h);
-  const faceTex = canvasTex(300, 280, () => {});
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.78, 0.73), new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, roughness: 0.6 }));
-  face.position.set(0, 0.4, 0.385); headG.add(face);
-  // 头发: 头顶 + 刘海 + 两侧 + 背后长发 + 发卡蝴蝶结
-  const top = box(0.94, 0.26, 0.86, hair, 0.1); top.position.y = 0.86; headG.add(top);
-  for (let i = 0; i < 4; i++) { const bg_ = box(0.24, 0.2 + (i % 2) * 0.06, 0.1, i % 2 ? hairHi : hair, 0.04); bg_.position.set(-0.33 + i * 0.22, 0.72 - (i % 2) * 0.03, 0.4); headG.add(bg_); }
+  // 大方头
+  const headG = new THREE.Group(); headG.position.y = 1.75; body.add(headG);
+  const hd = vox(1.12, 0.98, 0.92, C.skin); hd.position.y = 0.5; headG.add(hd);
+  const faceTex = canvasTex(300, 260, () => {});
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.953), new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, roughness: 0.7 }));
+  face.position.set(0, 0.48, 0.462); headG.add(face);
+  // 头发: 头顶 + 锯齿齐刘海 + 两侧长发(发尾更深) + 后面 + 粉色发圈
+  const top = vox(1.2, 0.3, 1.0, C.hair); top.position.set(0, 1.0, -0.02); headG.add(top);
+  const bangs = [[-0.42, 0.2], [-0.18, 0.14], [0.02, 0.2], [0.22, 0.12], [0.43, 0.18]];
+  bangs.forEach(([x, hh], i) => { const b = vox(i === 2 ? 0.2 : 0.24, hh, 0.08, i % 2 ? '#6e3e28' : C.hair); b.position.set(x, 0.86 - hh / 2 + 0.02, 0.47); headG.add(b); });
   const side = [];
-  for (const sx of [-1, 1]) { const s_ = box(0.14, 0.95, 0.56, hair, 0.06); s_.position.set(sx * 0.48, 0.38, -0.04); headG.add(s_); side.push(s_); }
-  const longHair = box(0.94, 1.35, 0.24, hair, 0.08); longHair.position.set(0, 0.22, -0.38); headG.add(longHair);
-  const tip = box(0.8, 0.2, 0.22, hairHi, 0.08); tip.position.set(0, -0.48, -0.38); headG.add(tip);
-  const bowG = new THREE.Group(); bowG.position.set(0.3, 0.98, 0.18); bowG.rotation.z = -0.3; headG.add(bowG);
-  for (const sx of [-1, 1]) { const w_ = mesh(new THREE.ConeGeometry(0.12, 0.22, 4), bow); w_.rotation.z = sx * Math.PI / 2; w_.position.x = sx * 0.1; bowG.add(w_); }
-  const knot = box(0.08, 0.08, 0.08, bow, 0.02); bowG.add(knot);
-  // 被风吹起的发丝
+  for (const sx of [-1, 1]) {
+    const sp = new THREE.Group(); sp.position.set(sx * 0.66, 0.86, 0.05); headG.add(sp);
+    const s1 = vox(0.22, 0.72, 0.6, C.hair); s1.position.y = -0.36; sp.add(s1);
+    const s2 = vox(0.22, 0.24, 0.5, C.hairDk); s2.position.y = -0.84; sp.add(s2);
+    const t1 = vox(0.14, 0.14, 0.2, C.tieHair); t1.position.set(sx * 0.14, -0.1, 0.18); sp.add(t1);
+    const t2 = vox(0.12, 0.12, 0.16, '#c94a74'); t2.position.set(sx * 0.14, -0.22, 0.18); sp.add(t2);
+    side.push(sp);
+  }
+  const backHair = vox(1.18, 1.0, 0.18, C.hair); backHair.position.set(0, 0.45, -0.52); headG.add(backHair);
+  const clip = vox(0.12, 0.16, 0.1, C.tieHair); clip.position.set(0.5, 0.92, 0.38); headG.add(clip);
   const strands = [];
-  for (let i = 0; i < 5; i++) { const s_ = box(0.08, 0.45, 0.08, hair, 0.03); s_.position.set(-0.3 + i * 0.15, 0.95, -0.2); headG.add(s_); strands.push(s_); }
+  for (let i = 0; i < 4; i++) { const s_ = vox(0.08, 0.4, 0.08, C.hair); s_.position.set(-0.3 + i * 0.2, 1.1, -0.25); headG.add(s_); strands.push(s_); }
   root.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  const st = { blink: false, shock: false, look: 0 };
+  const st = { blink: false, shock: false, smile: false, look: 0 };
   return {
-    root,
+    root, headG,
     update(t, o = {}) {
       root.visible = true;
-      root.position.y = 0.02 * Math.sin(t * 2.4);
-      root.scale.set(1, 1 + 0.008 * Math.sin(t * 2.4), 1);
-      st.blink = (t % 2.9) < 0.12 && !o.shock; st.shock = !!o.shock; st.look = 0.6 * Math.sin(t * 0.7);
+      body.position.y = 0.02 * Math.sin(t * 2.4);
+      body.scale.set(1.12, 1.12 * (1 + 0.008 * Math.sin(t * 2.4)), 1.12);
+      st.blink = (t % 2.9) < 0.12 && !o.shock; st.shock = !!o.shock; st.smile = !!(o.hug || o.wave); st.look = 0.6 * Math.sin(t * 0.7);
       drawGirlFace(faceTex.userData.g, st); faceTex.needsUpdate = true;
-      arms[0].rotation.z = o.hug ? -1.3 - 0.15 * Math.sin(t * 5) : o.wave ? -2.5 + 0.35 * Math.sin(t * 8) : -0.1 - 0.03 * Math.sin(t * 2.4);
-      arms[1].rotation.z = o.hug ? 1.3 + 0.15 * Math.sin(t * 5) : o.reach ? 1.25 + 0.1 * Math.sin(t * 6) : 0.1 + 0.03 * Math.sin(t * 2.4);
-      arms[0].rotation.x = 0; arms[1].rotation.x = 0;
+      arms[0].rotation.z = o.hug ? -1.3 - 0.15 * Math.sin(t * 5) : o.wave ? -2.6 + 0.35 * Math.sin(t * 8) : -0.08 - 0.03 * Math.sin(t * 2.4);
+      arms[1].rotation.z = o.hug ? 1.3 + 0.15 * Math.sin(t * 5) : o.reach ? 1.2 + 0.1 * Math.sin(t * 6) : 0.08 + 0.03 * Math.sin(t * 2.4);
       headG.rotation.set(0, o.headYaw ?? 0.15 * Math.sin(t * 0.8), 0.06 * Math.sin(t * 1.1));
-      bowG.rotation.y = 0.15 * Math.sin(t * 3);
-      longHair.rotation.x = 0.04 * Math.sin(t * 1.7) + (o.blow ? 0.35 + 0.1 * Math.sin(t * 12) : 0);
-      side.forEach((s_, i) => { s_.rotation.z = (o.blow ? 0.4 : 0.03) * Math.sin(t * (o.blow ? 13 : 1.5) + i); });
+      side.forEach((s_, i) => { s_.rotation.z = (i ? -1 : 1) * (o.blow ? 0.4 : 0.04) * Math.sin(t * (o.blow ? 13 : 1.5) + i); s_.rotation.x = 0.04 * Math.sin(t * 1.7 + i); });
       strands.forEach((s_, i) => { s_.visible = !!o.blow; s_.rotation.z = 1.2 + 0.3 * Math.sin(t * 14 + i); });
     },
   };
 }
 
-// ------------------------------------------------------------------ 孔雀 / 九尾狐
-export function makePeacock() {
-  const root = new THREE.Group(), fan = new THREE.Group(); fan.position.set(0, 0.9, -0.2); root.add(fan);
-  const feather = std('#4fb8a6'), eye = std('#3c6fd0'), blue = std('#5b8fe0'), gold = std('#f2c14e');
-  const feathers = [];
-  for (let i = 0; i < 11; i++) {
-    const g = new THREE.Group(); g.rotation.z = -1.4 + 2.8 * i / 10; fan.add(g);
-    const f = mesh(new THREE.SphereGeometry(0.26, 16, 12), feather); f.scale.set(1, 1.6, 0.25); f.position.y = 1.0; g.add(f);
-    const e = mesh(new THREE.SphereGeometry(0.11, 12, 8), eye); e.scale.set(1, 1.3, 0.3); e.position.set(0, 1.08, 0.06); g.add(e);
-    const q = box(0.05, 0.8, 0.05, '#8fd3c3', 0.02); q.position.y = 0.45; g.add(q);
-    feathers.push(g);
-  }
-  const b = box(0.6, 0.6, 0.7, blue, 0.12); b.position.y = 0.75; root.add(b);
-  const n = box(0.2, 0.75, 0.22, blue, 0.06); n.position.set(0, 1.35, 0.22); root.add(n);
-  const hd = box(0.32, 0.3, 0.36, blue, 0.08); hd.position.set(0, 1.8, 0.3); root.add(hd);
-  const bk = mesh(new THREE.ConeGeometry(0.07, 0.22, 4), gold); bk.rotation.x = Math.PI / 2; bk.position.set(0, 1.78, 0.56); root.add(bk);
-  for (let i = -1; i <= 1; i++) { const c = mesh(new THREE.SphereGeometry(0.05, 8, 6), blue); c.position.set(i * 0.08, 2.1, 0.3); root.add(c); }
-  for (const sx of [-1, 1]) { const l = box(0.06, 0.5, 0.06, gold, 0.02); l.position.set(sx * 0.14, 0.25, 0); root.add(l); }
-  for (const sx of [-1, 1]) { const e = box(0.05, 0.06, 0.02, '#1b1218', 0.01); e.position.set(sx * 0.1, 1.84, 0.49); root.add(e); }
-  root.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  return { root, update(t) { root.visible = true; feathers.forEach((g, i) => { g.rotation.x = 0.05 * Math.sin(t * 3 + i); }); fan.scale.setScalar(1 + 0.03 * Math.sin(t * 4)); } };
-}
-export function makeFox() {
-  const root = new THREE.Group(); const fur = std('#f39a5d'), white = std('#fff6ee'), ink = std('#2a1a22');
-  const tails = [];
-  for (let i = 0; i < 9; i++) {
-    const g = new THREE.Group(); g.position.set(0, 0.5, -0.4); g.rotation.set(-0.5, 0, -1.3 + 2.6 * i / 8); root.add(g);
-    const t1 = box(0.22, 0.9, 0.22, fur, 0.08); t1.position.y = 0.45; g.add(t1);
-    const t2 = box(0.22, 0.25, 0.22, white, 0.08); t2.position.y = 0.98; g.add(t2);
-    tails.push(g);
-  }
-  const b = box(0.7, 0.6, 0.9, fur, 0.1); b.position.y = 0.4; root.add(b);
-  const h = box(0.7, 0.6, 0.6, fur, 0.1); h.position.set(0, 1.0, 0.25); root.add(h);
-  const m = box(0.36, 0.2, 0.2, white, 0.05); m.position.set(0, 0.88, 0.6); root.add(m);
-  for (const sx of [-1, 1]) {
-    const e = mesh(new THREE.ConeGeometry(0.16, 0.36, 4), fur); e.rotation.y = Math.PI / 4; e.position.set(sx * 0.22, 1.46, 0.25); root.add(e);
-    const ey = box(0.14, 0.035, 0.02, ink, 0.01); ey.position.set(sx * 0.16, 1.06, 0.56); ey.rotation.z = sx * 0.15; root.add(ey);
-  }
-  root.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  return { root, update(t) { root.visible = true; tails.forEach((g, i) => { g.rotation.x = -0.5 + 0.08 * Math.sin(t * 2 + i); }); } };
-}
-
-// ------------------------------------------------------------------ 奶油色方块狗 (大方头 + 耷拉耳 + 方嘴筒 + 骨头/爪印花纹 + 会摇的尾巴)
-export const DOG = { head: '#fdebd3', body: '#fbe2c4', ear: '#dc9e70', earTip: '#c9875a', snout: '#fff7ec', nose: '#4a2c2a', tail: '#f6d2a8', tip: '#ffffff', tongue: '#f27a96' };
-
+// ------------------------------------------------------------------ 小狗: 体素风柴犬 (按用户图: 橙色大方头 + 竖耳(内粉) + 头顶粉蝴蝶结 + 白色鼻梁/嘴套 + 黑鼻子 + 吐舌头 + 粉腮红 + 金色铃牌 + 白爪)
+export const DOG = { fur: '#f7993c', furDk: '#d9782a', earIn: '#ff8fa0', white: '#fffdf0', ink: '#2e1f1a', blush: '#ffa6bb',
+  bow: '#ffa0b8', bowDk: '#f27a96', tongue: '#f59ab0', tag: '#c9a03a', tip: '#fff3d6' };
 export function drawDogFace(g, s) {
   const w = 520, h = 440; g.clearRect(0, 0, w, h);
-  g.fillStyle = 'rgba(238,110,140,0.7)';
-  for (const x of [40, 408]) { g.beginPath(); g.roundRect(x, 232, 72, 30, 8); g.fill(); }
-  for (const [ex, sx] of [[150, -1], [370, 1]]) {
-    const ey = 150, lx = s.look * 14, ly = s.lookY * 10;
-    // 眉毛 (焦糖色小方块): sad 时内侧抬高
-    g.fillStyle = '#c9875a';
-    g.save(); g.translate(ex, ey - 92 - (s.perk ? 10 : 0)); g.rotate(s.eyes === 'sad' ? sx * -0.35 : 0); g.fillRect(-34, -10, 68, 20); g.restore();
+  // 白色鼻梁 (从额头一直到嘴套)
+  g.fillStyle = DOG.white; g.fillRect(200, 118, 120, h - 118);
+  // 腮红
+  g.fillStyle = DOG.blush; g.fillRect(14, 282, 62, 46); g.fillRect(444, 282, 62, 46);
+  for (const [ex, sx] of [[130, -1], [390, 1]]) {
+    const ey = 200, lx = s.look * 10, ly = s.lookY * 8;
+    if (s.eyes === 'sad') { g.fillStyle = DOG.furDk; g.save(); g.translate(ex, ey - 82); g.rotate(sx * -0.35); g.fillRect(-36, -9, 72, 18); g.restore(); }
     if (s.eyes === 'happy') {
-      g.strokeStyle = '#1b1218'; g.lineWidth = 22; g.lineCap = 'square'; g.lineJoin = 'miter';
-      g.beginPath(); g.moveTo(ex - 50, ey + 28); g.lineTo(ex, ey - 22); g.lineTo(ex + 50, ey + 28); g.stroke();
+      g.strokeStyle = DOG.ink; g.lineWidth = 24; g.lineCap = 'square'; g.lineJoin = 'miter';
+      g.beginPath(); g.moveTo(ex - 46, ey + 26); g.lineTo(ex, ey - 22); g.lineTo(ex + 46, ey + 26); g.stroke();
       continue;
     }
     const open = s.open, half = s.eyes === 'half';
-    const eh = 130 * open, top = ey - 65 + (half ? 46 : 0) + (1 - open) * 60;
-    const hh = half ? Math.max(4, eh - 46) : eh;
-    if (hh < 12) { g.fillStyle = '#1b1218'; g.fillRect(ex - 56, ey - 6, 112, 14); continue; }
-    g.fillStyle = '#1b1218'; g.fillRect(ex - 56, top, 112, hh);
+    const eh = 120 * open, top = ey - 60 + (half ? 44 : 0) + (1 - open) * 56;
+    const hh = half ? Math.max(4, eh - 44) : eh;
+    if (hh < 12) { g.fillStyle = DOG.ink; g.fillRect(ex - 46, ey - 6, 92, 14); continue; }
+    g.fillStyle = DOG.ink; g.fillRect(ex - 46, top, 92, hh);
     if (!half && open > 0.6) {
-      const big = s.eyes === 'sad' ? 1.25 : 1;     // 狗狗眼: 高光更大更亮
-      g.fillStyle = '#ffffff'; g.fillRect(ex - 40 + lx, top + 16 + ly, 38 * big, 38 * big);
-      g.fillRect(ex + 12 + lx, top + 76 + ly, 22, 22);
-      g.fillRect(ex - 16 + lx, top + 86 + ly, 12, 12);
-      if (s.shine > 0) { g.globalAlpha = s.shine; g.fillRect(ex + 28 + lx, top + 12, 10, 10); g.globalAlpha = 1; }
-      if (s.eyes === 'sad') { g.fillStyle = 'rgba(140,200,255,0.9)'; g.fillRect(ex - 50, top + hh - 14, 100, 10); }
+      const big = s.eyes === 'sad' ? 1.25 : 1;
+      g.fillStyle = '#ffffff'; g.fillRect(ex + (sx < 0 ? -36 : 6) + lx, top + 12 + ly, 30 * big, 30 * big);
+      g.fillRect(ex + (sx < 0 ? 12 : -30) + lx, top + 80 + ly, 18, 18);
+      if (s.shine > 0) { g.globalAlpha = s.shine; g.fillRect(ex + 30 + lx, top + 8, 8, 8); g.globalAlpha = 1; }
+      if (s.eyes === 'sad') { g.fillStyle = 'rgba(140,200,255,0.95)'; g.fillRect(ex - 40, top + hh - 12, 80, 10); }
     }
   }
 }
 function drawDogMouth(g, s) {
   const w = 256, h = 110; g.clearRect(0, 0, w, h);
-  g.strokeStyle = '#8a4a3c'; g.lineWidth = 9; g.lineCap = 'round'; g.lineJoin = 'round';
-  g.beginPath(); g.moveTo(128, 6); g.lineTo(128, 36); g.stroke();
-  if (s.mouth === 'open') { g.fillStyle = '#8a3a44'; g.beginPath(); g.roundRect(78, 34, 100, 64, 22); g.fill(); g.fillStyle = DOG.tongue; g.beginPath(); g.roundRect(96, 62, 64, 36, 14); g.fill(); }
-  else if (s.mouth === 'o') { g.fillStyle = '#8a3a44'; g.beginPath(); g.roundRect(104, 40, 48, 54, 20); g.fill(); }
-  else if (s.mouth === 'flat') { g.beginPath(); g.moveTo(90, 52); g.lineTo(166, 52); g.stroke(); }
-  else if (s.mouth === 'sad') { g.beginPath(); g.moveTo(84, 66); g.quadraticCurveTo(128, 26, 172, 66); g.stroke(); }
-  else { g.beginPath(); g.moveTo(70, 34); g.quadraticCurveTo(98, 70, 128, 36); g.quadraticCurveTo(158, 70, 186, 34); g.stroke(); }
+  g.strokeStyle = '#8a4a3c'; g.lineWidth = 9; g.lineCap = 'square';
+  if (s.mouth === 'open') { g.fillStyle = '#7a3040'; g.fillRect(84, 40, 88, 60); }
+  else if (s.mouth === 'o') { g.fillStyle = '#7a3040'; g.fillRect(104, 36, 48, 58); }
+  else if (s.mouth === 'flat') { g.beginPath(); g.moveTo(96, 60); g.lineTo(160, 60); g.stroke(); }
+  else if (s.mouth === 'sad') { g.beginPath(); g.moveTo(88, 76); g.lineTo(108, 56); g.lineTo(148, 56); g.lineTo(168, 76); g.stroke(); }
 }
-// 身体花纹: 小骨头 + 爪印
-const dogPatTex = canvasTex(256, 256, (g, w, h) => {
-  g.fillStyle = DOG.body; g.fillRect(0, 0, w, h);
-  const r = rng(12), cols = ['#e9a877', '#ffffff', '#9fc8f2', '#f4a0b8'];
-  const bone = (x, y, s, a, c) => {
-    g.save(); g.translate(x, y); g.rotate(a); g.scale(s, s); g.fillStyle = c;
-    g.fillRect(-14, -4, 28, 8);
-    for (const bx of [-14, 14]) for (const by of [-5, 5]) { g.beginPath(); g.arc(bx, by, 6, 0, 7); g.fill(); }
-    g.restore();
-  };
-  const paw = (x, y, s, a, c) => {
-    g.save(); g.translate(x, y); g.rotate(a); g.scale(s, s); g.fillStyle = c;
-    g.beginPath(); g.ellipse(0, 5, 9, 7, 0, 0, 7); g.fill();
-    for (const [px, py] of [[-10, -6], [-3.5, -11], [3.5, -11], [10, -6]]) { g.beginPath(); g.arc(px, py, 3.6, 0, 7); g.fill(); }
-    g.restore();
-  };
-  for (let gy = 0; gy < 2; gy++) for (let gx = 0; gx < 2; gx++) {
-    const x = gx * 128 + 40 + (gy % 2) * 46 + r() * 20, y = gy * 128 + 40 + r() * 40, s = 1.5 + r() * 0.3, a = (r() - 0.5) * 1.8;
-    const c = cols[(gx + gy * 2) % 4], f = (gx + gy) % 2 ? bone : paw;
-    for (const [dx, dy] of [[0, 0], [w, 0], [-w, 0], [0, h], [0, -h]]) f(x + dx, y + dy, s, a, c);
-  }
-});
-dogPatTex.wrapS = dogPatTex.wrapT = THREE.RepeatWrapping;
-
 export function makeDog() {
-  const root = new THREE.Group();
-  const bodyMat = std('#ffffff', { map: dogPatTex });
-  const headMat = std(DOG.head, { emissive: new THREE.Color(DOG.head), emissiveIntensity: 0.14 });
-  const earMat = std(DOG.ear), tipMat = std(DOG.earTip), snoutMat = std(DOG.snout), noseMat = std(DOG.nose, { roughness: 0.35 });
-  const tailMat = std(DOG.tail), tailTip = std(DOG.tip), legMat = std(DOG.head);
+  const root = new THREE.Group(), C = DOG;
+  const furMat = std(C.fur), dkMat = std(C.furDk), whiteMat = std(C.white);
   const bodyPivot = new THREE.Group(); root.add(bodyPivot);
-  const body = mesh(rbox(0.95, 0.78, 1.5, 0.1), bodyMat); body.position.set(0, 0.62, -0.55); bodyPivot.add(body);
+  const body = mesh(rbox(0.95, 0.74, 1.45, 0.015), furMat); body.position.set(0, 0.62, -0.55); bodyPivot.add(body);
+  const belly = vox(0.8, 0.08, 1.2, C.white); belly.position.set(0, 0.24, -0.55); bodyPivot.add(belly);
+  const tag = vox(0.14, 0.12, 0.05, C.tag); tag.position.set(0, 0.86, 0.23); bodyPivot.add(tag);
   const legs = [];
   for (const [sx, z] of [[-1, 0.08], [1, 0.08], [-1, -1.08], [1, -1.08]]) {
-    const piv = new THREE.Group(); piv.position.set(sx * 0.28, 0.42, z); bodyPivot.add(piv);
-    const l = mesh(rbox(0.26, 0.46, 0.28, 0.06), legMat); l.position.y = -0.2; piv.add(l);
-    const pw = mesh(rbox(0.3, 0.12, 0.34, 0.05), snoutMat); pw.position.set(0, -0.39, 0.03); piv.add(pw);
+    const piv = new THREE.Group(); piv.position.set(sx * 0.27, 0.42, z); bodyPivot.add(piv);
+    const l = vox(0.27, 0.36, 0.28, z > 0 ? C.fur : C.furDk); l.position.y = -0.16; piv.add(l);
+    const pw = vox(0.29, 0.12, 0.32, C.white); pw.position.set(0, -0.38, 0.02); piv.add(pw);
     legs.push(piv);
   }
-  // 尾巴: 一节一节方块链
-  const tailBase = new THREE.Group(); tailBase.position.set(0, 0.86, -1.28); bodyPivot.add(tailBase);
+  // 柴犬卷尾巴
+  const tailBase = new THREE.Group(); tailBase.position.set(0, 0.92, -1.22); bodyPivot.add(tailBase);
   const tail = []; let p = tailBase;
   for (let i = 0; i < 5; i++) {
-    const s = new THREE.Group(); s.position.y = i === 0 ? 0 : 0.16;
-    const ww = 0.15 * (1 - i * 0.06);
-    const m = mesh(rbox(ww, 0.21, ww, 0.05), i === 4 ? tailTip : tailMat); m.position.y = 0.08; s.add(m); p.add(s); p = s; tail.push(s);
+    const s = new THREE.Group(); s.position.y = i === 0 ? 0 : 0.15;
+    const ww = 0.17 * (1 - i * 0.06);
+    const m = vox(ww, 0.19, ww, i >= 3 ? C.tip : C.fur); m.position.y = 0.075; s.add(m); p.add(s); p = s; tail.push(s);
   }
   // 头
   const headPivot = new THREE.Group(); headPivot.position.set(0, 0.95, 0.15); bodyPivot.add(headPivot);
-  const head = mesh(rbox(1.2, 1.0, 0.95, 0.08), headMat); head.position.set(0, 0.42, 0.1); headPivot.add(head);
+  const head = mesh(rbox(1.2, 1.02, 0.95, 0.015), std(C.fur, { emissive: new THREE.Color(C.fur), emissiveIntensity: 0.1 })); head.position.set(0, 0.43, 0.1); headPivot.add(head);
   const faceTex = canvasTex(520, 440, () => {});
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(1.14, 0.94), new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, roughness: 0.6 }));
-  face.position.set(0, 0.42, 0.578); headPivot.add(face);
-  const snout = mesh(rbox(0.56, 0.36, 0.34, 0.08), snoutMat); snout.position.set(0, 0.16, 0.7); headPivot.add(snout);
-  const nose = mesh(rbox(0.26, 0.15, 0.12, 0.05), noseMat); nose.position.set(0, 0.3, 0.88); headPivot.add(nose);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.015), new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, roughness: 0.7 }));
+  face.position.set(0, 0.43, 0.579); headPivot.add(face);
+  const snout = mesh(rbox(0.6, 0.36, 0.22, 0.012), whiteMat); snout.position.set(0, 0.1, 0.68); headPivot.add(snout);
+  const nose = vox(0.22, 0.13, 0.1, C.ink); nose.position.set(0, 0.22, 0.8); headPivot.add(nose);
   const mouthTex = canvasTex(256, 110, () => {});
-  const mouth = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.215), new THREE.MeshStandardMaterial({ map: mouthTex, transparent: true, roughness: 0.6 }));
-  mouth.position.set(0, 0.1, 0.872); headPivot.add(mouth);
-  const tongue = mesh(rbox(0.16, 0.24, 0.05, 0.03), std(DOG.tongue)); tongue.position.set(0.05, -0.04, 0.84); headPivot.add(tongue);
+  const mouth = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.215), new THREE.MeshStandardMaterial({ map: mouthTex, transparent: true, roughness: 0.7 }));
+  mouth.position.set(0, 0.03, 0.792); headPivot.add(mouth);
+  const tongue = vox(0.16, 0.16, 0.06, C.tongue); tongue.position.set(0, -0.12, 0.72); headPivot.add(tongue);
+  // 竖耳朵 (外橙内粉)
   const ears = [];
   for (const sx of [-1, 1]) {
-    const ep = new THREE.Group(); ep.position.set(sx * 0.6, 0.86, 0.12); headPivot.add(ep);
-    const e = mesh(rbox(0.16, 0.7, 0.5, 0.07), earMat); e.position.set(sx * 0.04, -0.3, 0); ep.add(e);
-    const et = mesh(rbox(0.17, 0.16, 0.5, 0.06), tipMat); et.position.set(sx * 0.04, -0.6, 0); ep.add(et);
+    const ep = new THREE.Group(); ep.position.set(sx * 0.4, 0.92, 0.2); headPivot.add(ep);
+    const e = vox(0.3, 0.36, 0.14, C.furDk); e.position.y = 0.18; ep.add(e);
+    const ei = vox(0.15, 0.25, 0.03, C.earIn); ei.position.set(sx * 0.02, 0.15, 0.075); ep.add(ei);
     ears.push(ep);
   }
+  // 头顶粉蝴蝶结
+  const bow = new THREE.Group(); bow.position.set(0, 0.97, 0.38); headPivot.add(bow);
+  for (const sx of [-1, 1]) { const b = vox(0.2, 0.12, 0.1, C.bow); b.position.x = sx * 0.13; bow.add(b); }
+  const bk = vox(0.08, 0.14, 0.11, C.bowDk); bow.add(bk);
   // 嘴里叼的拖鞋
-  const slipper = new THREE.Group(); slipper.position.set(0, 0.04, 0.98); headPivot.add(slipper);
-  { const a = mesh(rbox(0.32, 0.1, 0.62, 0.05), std('#ff9ec0')); slipper.add(a); const b = mesh(rbox(0.34, 0.16, 0.26, 0.06), std('#ffffff')); b.position.set(0, 0.1, -0.12); slipper.add(b); slipper.rotation.y = Math.PI / 2; }
+  const slipper = new THREE.Group(); slipper.position.set(0, -0.02, 0.9); headPivot.add(slipper);
+  { const a = mesh(rbox(0.32, 0.1, 0.62, 0.02), std('#ff9ec0')); slipper.add(a); const b = mesh(rbox(0.34, 0.16, 0.26, 0.02), std('#ffffff')); b.position.set(0, 0.1, -0.12); slipper.add(b); slipper.rotation.y = Math.PI / 2; }
 
-  const st = { open: 1, eyes: 'normal', look: 0, lookY: 0, shine: 0, mouth: 'smile', perk: 0 };
+  const st = { open: 1, eyes: 'normal', look: 0, lookY: 0, shine: 0, mouth: 'smile' };
   const api = {
     root, bodyPivot, headPivot, ears, legs, tail, faceTex, st, slipper,
-    // o: yaw/pitch/tilt, perk (0..1 竖耳), wag (0..1), tailDown, eyes, look, mouth, tongue, sit, lie, walk, hop, dropY, carry
+    // o: yaw/pitch/tilt, perk (0..1 竖耳), wag (0..1), tailDown, eyes, look, mouth, tongue, sit, lie, walk, hop, dropY, carry, flap
     update(t, o = {}) {
       root.visible = true;
       const sit = o.sit || 0, lie = o.lie || 0;
-      const br = Math.sin(t * (o.pant ? 9 : 2.3)) * (o.pant ? 0.02 : 0.015);
+      const br = Math.sin(t * 2.3) * 0.015;
       bodyPivot.scale.set(1 + br, 1 - br, 1 + br);
       bodyPivot.rotation.set(-0.35 * sit, 0, 0);
-      // 腿: 坐 / 趴 / 走
       legs.forEach((l, i) => {
         const front = i < 2;
         let rx = (o.walk || 0) * 0.55 * Math.sin(t * 10 + (i === 0 || i === 3 ? 0 : Math.PI));
@@ -523,24 +455,24 @@ export function makeDog() {
       headPivot.rotation.set((o.pitch || 0) + 0.35 * sit + 0.04 * Math.sin(t * 1.9) + 0.25 * lie,
         (o.yaw || 0) + 0.1 * Math.sin(t * 1.1), (o.tilt || 0) + 0.07 * Math.sin(t * 1.6));
       headPivot.position.y = 0.95 - 0.12 * lie;
-      // 耳朵: 一直轻轻晃 + 时不时抖一下, perk 竖起来
+      // 竖耳: perk 时竖直朝前, 不开心时往后压成飞机耳; 一直轻轻转, 时不时抖一下
+      const down = o.tailDown || o.eyes === 'sad';
       ears.forEach((ep, i) => {
         const sx = i ? 1 : -1;
         const flick = Math.max(0, Math.sin(t * (i ? 2.1 : 1.7) + i * 2.0)) ** 16;
-        const lift = 0.12 + 1.15 * (o.perk || 0) + 0.08 * Math.sin(t * 1.4 + i * 1.3) + 0.35 * flick + (o.flap ? 0.5 * Math.abs(Math.sin(t * 12 + i)) : 0);
-        ep.rotation.set(0.1 * Math.sin(t * 1.1 + i), 0, sx * lift);
+        const back_ = (1 - (o.perk ?? 0.5)) * 0.45 + (down ? 0.9 : 0) + (o.flap ? 0.4 * Math.abs(Math.sin(t * 12 + i)) : 0);
+        ep.rotation.set(-back_ - 0.3 * flick + 0.06 * Math.sin(t * 1.3 + i), sx * (0.12 * Math.sin(t * 0.9 + i * 1.7) + 0.3 * flick), -sx * (0.08 + (down ? 0.5 : 0)));
       });
-      // 尾巴
-      const wag = o.wag ?? 0.3, hz = 1.2 + 9 * wag, amp = 0.15 + 0.55 * wag;
-      const lean = o.tailDown ? -2.4 : -0.55 - 0.3 * wag;
+      // 尾巴 (卷在背上, 开心时摇得飞快; 难过时垂下)
+      const wag = o.wag ?? 0.3, hz = 1.2 + 9 * wag, amp = 0.12 + 0.5 * wag;
+      const lean = o.tailDown ? -2.3 : -0.25;
       tailBase.rotation.set(lean, 0, amp * 0.8 * Math.sin(2 * Math.PI * hz * t));
-      tail.forEach((s, j) => { s.rotation.z = (o.tailDown ? 0.05 : amp * 0.5) * Math.sin(2 * Math.PI * hz * t - j * 0.7); s.rotation.x = j > 1 ? -0.12 : 0; });
-      // 跳
+      tail.forEach((s, j) => { s.rotation.z = (o.tailDown ? 0.05 : amp * 0.4) * Math.sin(2 * Math.PI * hz * t - j * 0.7); s.rotation.x = o.tailDown ? 0 : (j > 0 ? 0.5 : 0); });
       const hop = o.hop || 0;
       bodyPivot.position.y = hop * Math.abs(Math.sin(t * Math.PI * (o.hopHz || 1.6))) * 0.4 + (o.dropY || 0) + 0.05 * sit - 0.36 * lie;
-      tongue.visible = !!o.tongue; tongue.rotation.x = 0.15 * Math.sin(t * 9);
-      slipper.visible = !!o.carry;
-      Object.assign(st, { eyes: o.eyes || 'normal', look: o.look || 0, lookY: o.lookY || 0, mouth: o.mouth ?? 'smile', perk: (o.perk || 0) > 0.5, shine: (t % 1.8) < 0.9 ? 1 : 0 });
+      tongue.visible = o.tongue ?? (o.mouth === 'open' || o.mouth === undefined); tongue.rotation.x = 0.12 * Math.sin(t * 9);
+      slipper.visible = !!o.carry; if (o.carry) tongue.visible = false;
+      Object.assign(st, { eyes: o.eyes || 'normal', look: o.look || 0, lookY: o.lookY || 0, mouth: o.mouth ?? 'smile', shine: (t % 1.8) < 0.9 ? 1 : 0 });
       st.open = 1;
       if ((st.eyes === 'normal' || st.eyes === 'sad') && (t % 2.9) < 0.12) st.open = Math.abs((t % 2.9) - 0.06) / 0.06;
       drawDogFace(faceTex.userData.g, st); faceTex.needsUpdate = true;

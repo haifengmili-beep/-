@@ -5,7 +5,7 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DURS = [("title", 3.0), ("m1", 3.2), ("m10", 3.2), ("m30", 3.0), ("h1", 3.2), ("h3", 3.2), ("h5", 3.4),
-        ("h8", 3.6), ("open", 3.8), ("why", 4.8), ("back", 4.8), ("end", 3.6)]
+        ("h8", 3.6), ("open", 4.4), ("why", 4.8), ("back", 4.8), ("end", 3.6)]
 STARTS, acc = {}, 0.0
 for n, d in DURS:
     STARTS[n] = acc; acc += d
@@ -63,11 +63,14 @@ def main(path):
         add((np.sin(ph) + 0.25 * np.sin(2 * ph)) * np.minimum(1, k / 0.1) * np.minimum(1, (1.1 - k) / 0.3), t0, 0.16)
     for j in range(24):                                                   # 钟 嘀嗒 (越来越快)
         add(note(mtof(100 if j % 2 else 93), 0.05, "sin"), STARTS["h8"] + j * 0.14, 0.05)
-    k = tt(0.5); add(np.sin(2 * np.pi * (180 + 80 * np.sin(k * 30)) * k) * np.exp(-k * 4), STARTS["open"], 0.25)  # 门 吱呀
+    for j in range(3):                                                    # 钥匙 咔哒
+        add(note(mtof(98 + j * 3), 0.08, "sin"), STARTS["open"] + 0.3 + j * 0.05, 0.12)
+    add(thump(220, 0.08, 40), STARTS["open"] + 0.45, 0.4)
+    k = tt(0.6); add(np.sin(2 * np.pi * (180 + 80 * np.sin(k * 30)) * k) * np.exp(-k * 4), STARTS["open"] + 1.0, 0.25)  # 门 吱呀
     for j, mm in enumerate([84, 88, 91, 96, 100]):                        # 开门 闪亮琶音
-        add(note(mtof(mm), 0.6, "sin"), STARTS["open"] + 0.35 + j * 0.06, 0.12)
+        add(note(mtof(mm), 0.6, "sin"), STARTS["open"] + 1.1 + j * 0.06, 0.12)
     for j in range(6):                                                    # 开心 汪!
-        k = tt(0.12); add(np.sin(2 * np.pi * (700 - 1800 * k) * k) * np.exp(-k * 20), STARTS["open"] + 0.9 + j * 0.45, 0.25)
+        k = tt(0.12); add(np.sin(2 * np.pi * (700 - 1800 * k) * k) * np.exp(-k * 20), STARTS["open"] + 2.1 + j * 0.38, 0.25)
     soft = [(64, 67, 72), (62, 65, 69), (60, 64, 67), (60, 64, 67, 72), (65, 69, 72), (64, 67, 72), (60, 64, 67, 72)]
     for kk, ch in enumerate(soft):
         for jj, m in enumerate(ch):

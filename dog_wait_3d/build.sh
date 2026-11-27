@@ -6,7 +6,8 @@ cd "$(dirname "$0")"
 [ -d node_modules/three ] || npm install
 mkdir -p output && python3 make_audio.py
 [ "${KEEP_FRAMES:-0}" = 1 ] || rm -rf output/frames
-node render.js frames 0 321 & node render.js frames 321 642 & node render.js frames 642 963 & node render.js frames 963 1284 & wait
+N=$(python3 -c "import json;t=json.load(open('timeline.json'));print(round(t['fps']*t['dur']))"); Q=$(( (N + 3) / 4 ))
+for k in 0 1 2 3; do node render.js frames $((k * Q)) $(((k + 1) * Q)) & done; wait
 ffmpeg -y -v error -framerate 30 -i output/frames/f_%05d.jpg -i output/_audio.wav \
   -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p -movflags +faststart \
   -c:a aac -b:a 192k -shortest output/dog_waits_3d.mp4
