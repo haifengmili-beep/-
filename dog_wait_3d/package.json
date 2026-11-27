@@ -1,0 +1,6 @@
+{
+  "name": "dog-wait-3d",
+  "private": true,
+  "description": "假如你家的狗每分钟等你一次 — three.js 3D 版",
+  "dependencies": { "three": "0.165.0" }
+}
