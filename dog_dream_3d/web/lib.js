@@ -563,17 +563,20 @@ function pixelHeart(px, color) {
 }
 function drawMomFace(g, s) {
   const w = 300, h = 280; g.clearRect(0, 0, w, h);
-  g.fillStyle = '#ffa3bd'; for (const x of [22, 236]) g.fillRect(x, 168, 42, 26);
-  for (const ex of [92, 208]) {
-    const ey = 128, ink = '#3a2420';
-    if (s.blink) { g.fillStyle = ink; g.fillRect(ex - 26, ey + 4, 52, 9); continue; }
-    const k = s.shock ? 1.18 : 1, ew = 50 * k, eh = 62 * k, lx = s.look * 5;
-    g.fillStyle = ink; g.fillRect(ex - ew / 2, ey - eh / 2, ew, eh);
-    g.fillStyle = '#ffffff'; g.fillRect(ex - ew / 2 + 7 + lx, ey - eh / 2 + 7, 15, 17); g.fillRect(ex + ew / 2 - 17 + lx, ey + eh / 2 - 17, 9, 9);
-    g.fillStyle = ink; g.fillRect(ex + (ex < 150 ? -ew / 2 - 8 : ew / 2 - 4), ey - eh / 2 - 6, 12, 8);   // 睫毛
+  g.fillStyle = '#ff8fab'; g.fillRect(14, 196, 66, 20); g.fillRect(220, 196, 66, 20);        // 长条腮红
+  for (const [ex, sx] of [[88, -1], [212, 1]]) {
+    const ey = 150, ink = '#2e1a14', lx = s.look * 4;
+    // 粗眼线 + 外眼角翘起
+    g.fillStyle = ink; g.fillRect(ex - 44, ey - 66, 88, 14); g.fillRect(ex + sx * 44 - (sx > 0 ? 0 : 14), ey - 74, 14, 14);
+    if (s.blink) { g.fillRect(ex - 34, ey - 6, 68, 10); continue; }
+    const k = s.shock ? 1.12 : 1, ew = 66 * k, eh = 96 * k, top = ey - 54;
+    g.fillStyle = ink; g.fillRect(ex - ew / 2, top, ew, eh);                                   // 深棕眼框
+    g.fillStyle = '#8a4a2a'; g.fillRect(ex - ew / 2 + 8, top + eh * 0.55, ew - 16, eh * 0.45 - 8);   // 下半棕色
+    g.fillStyle = '#fdf6ee'; g.fillRect(ex + 2 + lx, top + 12, 18, 20);                        // 大高光 (右上)
+    g.fillRect(ex - ew / 2 + 12 + lx, top + eh - 30, 11, 12);                                    // 小高光 (左下)
   }
-  if (s.shock) { g.fillStyle = '#c8506a'; g.fillRect(136, 196, 28, 30); }
-  else { g.fillStyle = '#d2556f'; g.fillRect(132, 200, 36, 9); g.fillRect(126, 192, 9, 10); g.fillRect(165, 192, 9, 10); }
+  if (s.shock) { g.fillStyle = '#b8405a'; g.fillRect(134, 222, 32, 34); }
+  else { g.fillStyle = '#b8405a'; g.fillRect(134, 228, 32, 18); g.fillStyle = '#ff9fb5'; g.fillRect(142, 238, 16, 8); }   // 小嘴
 }
 export function makeMom() {
   const root = new THREE.Group(), R = 0.025;
@@ -582,11 +585,15 @@ export function makeMom() {
   for (const sx of [-1, 1]) {
     const l = mesh(rbox(0.18, 0.42, 0.2, R), skin); l.position.set(sx * 0.15, 0.38, 0); root.add(l);
     const s = mesh(rbox(0.25, 0.2, 0.32, R), shoe); s.position.set(sx * 0.15, 0.1, 0.03); root.add(s);
+    const sock = mesh(rbox(0.22, 0.1, 0.24, R), white); sock.position.set(sx * 0.15, 0.24, 0.0); root.add(sock);
   }
   const hem = mesh(rbox(0.9, 0.06, 0.66, 0.01), white); hem.position.y = 0.6; root.add(hem);
   const sk1 = mesh(rbox(0.86, 0.28, 0.62, R), skirtB); sk1.position.y = 0.76; root.add(sk1);
   const sk2 = mesh(rbox(0.72, 0.24, 0.52, R), skirtA); sk2.position.y = 1.0; root.add(sk2);
   const torso = mesh(rbox(0.6, 0.42, 0.42, R), top); torso.position.y = 1.32; root.add(torso);
+  const collar = mesh(rbox(0.3, 0.07, 0.05, 0.01), std('#eeeae6')); collar.position.set(0, 1.5, 0.215); root.add(collar);
+  for (const sx of [-1, 1]) { const bw = mesh(rbox(0.1, 0.1, 0.05, 0.01), std('#c23a62')); bw.position.set(sx * 0.07, 1.4, 0.225); root.add(bw); }
+  const bk = mesh(rbox(0.05, 0.07, 0.06, 0.01), std('#a52a50')); bk.position.set(0, 1.4, 0.23); root.add(bk);
   const arms = [];
   for (const sx of [-1, 1]) {
     const piv = new THREE.Group(); piv.position.set(sx * 0.38, 1.48, 0); root.add(piv);
@@ -596,26 +603,26 @@ export function makeMom() {
     arms.push(piv);
   }
   const headG = new THREE.Group(); headG.position.y = 1.52; root.add(headG);
-  const face = mesh(rbox(1.0, 0.9, 0.86, R), skin); face.position.y = 0.45; headG.add(face);
+  const face = mesh(rbox(1.1, 1.0, 0.9, R), skin); face.position.y = 0.48; headG.add(face);
   const faceTex = canvasTex(300, 280, () => {});
-  const fp = new THREE.Mesh(new THREE.PlaneGeometry(0.96, 0.9), new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, roughness: 0.7 }));
-  fp.position.set(0, 0.36, 0.432); headG.add(fp);
+  const fp = new THREE.Mesh(new THREE.PlaneGeometry(1.06, 0.99), new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, roughness: 0.7 }));
+  fp.position.set(0, 0.42, 0.452); headG.add(fp);
   // 头发: 后面一大块 + 头顶 + 刘海 + 两侧一层层往下
-  const back = mesh(rbox(1.14, 1.12, 0.52, R), hair); back.position.set(0, 0.48, -0.24); headG.add(back);
-  const crown = mesh(rbox(1.14, 0.28, 1.0, R), hair); crown.position.set(0, 0.98, 0.0); headG.add(crown);
-  const bang = mesh(rbox(1.02, 0.2, 0.1, R), hair); bang.position.set(0, 0.84, 0.45); headG.add(bang);
-  for (const [x, w_] of [[-0.3, 0.2], [0.05, 0.16], [0.32, 0.2]]) { const b = mesh(rbox(w_, 0.12, 0.1, R), hairDk); b.position.set(x, 0.7, 0.45); headG.add(b); }
+  const back = mesh(rbox(1.24, 1.2, 0.52, R), hair); back.position.set(0, 0.5, -0.24); headG.add(back);
+  const crown = mesh(rbox(1.24, 0.32, 1.02, R), hair); crown.position.set(0, 1.02, 0.0); headG.add(crown);
+  const bang = mesh(rbox(1.14, 0.12, 0.1, R), hair); bang.position.set(0, 0.88, 0.47); headG.add(bang);
+  for (const [x, w_, h_] of [[-0.42, 0.16, 0.1], [-0.2, 0.26, 0.17], [0.02, 0.14, 0.08], [0.2, 0.24, 0.16], [0.42, 0.18, 0.1]]) { const b = mesh(rbox(w_, h_, 0.1, R), hair); b.position.set(x, 0.82 - h_ / 2, 0.47); headG.add(b); }
   const sides = [];
   for (const sx of [-1, 1]) {
-    const s1 = mesh(rbox(0.14, 0.86, 0.7, R), hair); s1.position.set(sx * 0.57, 0.46, -0.02); headG.add(s1);
-    const s2 = mesh(rbox(0.2, 0.42, 0.42, R), hair); s2.position.set(sx * 0.62, -0.08, -0.12); headG.add(s2);
-    const s3 = mesh(rbox(0.16, 0.18, 0.3, R), hairDk); s3.position.set(sx * 0.62, -0.36, -0.14); headG.add(s3);
-    const tie_ = mesh(rbox(0.12, 0.2, 0.22, R), tie); tie_.position.set(sx * 0.66, 0.2, -0.05); headG.add(tie_);
+    const s1 = mesh(rbox(0.16, 0.9, 0.74, R), hair); s1.position.set(sx * 0.62, 0.5, -0.02); headG.add(s1);
+    const s2 = mesh(rbox(0.26, 0.6, 0.5, R), sx < 0 ? hairDk : hair); s2.position.set(sx * 0.72, 0.2, 0.02); headG.add(s2);
+    const s3 = mesh(rbox(0.22, 0.24, 0.4, R), hairDk); s3.position.set(sx * 0.72, -0.2, 0.0); headG.add(s3);
+    const tie_ = mesh(rbox(0.12, 0.22, 0.24, R), tie); tie_.position.set(sx * 0.64, 0.86, -0.05); headG.add(tie_);
     sides.push(s2, s3);
   }
   const hb = pixelHeart(0.045, '#ff7aa0'); hb.position.set(0.25, 0.72, -0.505); hb.rotation.y = Math.PI; headG.add(hb);   // 背后的像素爱心
-  const hf = pixelHeart(0.035, '#ff7aa0'); hf.position.set(-0.32, 0.98, 0.42); hf.rotation.z = 0.3; headG.add(hf);         // 前面的爱心发卡
-  const floatHeart = pixelHeart(0.05, '#ff6f9e'); root.add(floatHeart);                                                     // 头旁边飘的小爱心
+  const hf = new THREE.Group();
+  const floatHearts = [pixelHeart(0.05, '#f0628e'), pixelHeart(0.05, '#ff7aa0')]; floatHearts.forEach(h_ => root.add(h_));        // 头两边飘的像素爱心
   root.traverse(o => { if (o.isMesh) o.castShadow = true; });
   const st = { blink: false, shock: false, look: 0 };
   return {
@@ -633,8 +640,8 @@ export function makeMom() {
       sk1.rotation.y = 0.05 * Math.sin(t * 2.0); sk2.rotation.y = -0.04 * Math.sin(t * 2.0 + 1);
       sides.forEach((s_, i) => { s_.rotation.x = 0.06 * Math.sin(t * 1.7 + i) + (o.blow ? 0.4 + 0.1 * Math.sin(t * 12 + i) : 0); });
       hf.rotation.y = 0.2 * Math.sin(t * 3);
-      const u = (t * 0.5) % 1;
-      floatHeart.position.set(-0.95, 2.3 + 0.5 * u, 0.1); floatHeart.scale.setScalar(Math.sin(Math.PI * u) + 0.01); floatHeart.rotation.y = 0.4 * Math.sin(t * 2);
+      floatHearts.forEach((h_, i) => { const sx = i ? 1 : -1; h_.position.set(sx * 1.0, 2.1 + 0.12 * Math.sin(t * 2.2 + i * 1.5), 0.1);
+        h_.scale.setScalar(1 + 0.12 * Math.sin(t * 4 + i)); h_.rotation.set(0, 0.5 * Math.sin(t * 1.6 + i), sx * -0.15); });
     },
   };
 }
