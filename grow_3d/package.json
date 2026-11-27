@@ -1,0 +1,6 @@
+{
+  "name": "dog-grow-3d",
+  "private": true,
+  "description": "如果你童年的狗，能看着你长大呢 — three.js 3D 版",
+  "dependencies": { "three": "0.165.0" }
+}
