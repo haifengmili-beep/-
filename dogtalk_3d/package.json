@@ -1,0 +1,6 @@
+{
+  "name": "dogtalk-3d",
+  "private": true,
+  "description": "假如你家狗每分钟学一句人话 — three.js 3D 版",
+  "dependencies": { "three": "0.165.0" }
+}
