@@ -117,7 +117,7 @@ const PILE = [
   ['croc', 'croc', -1.05, -2.85, -0.25, [{}, {}]],
   ['plaid', 'plaid', -1.0, -1.95, 0.55, [{}, {}]],
   ['bunny', 'bunny', -0.35, -2.45, -0.45, [{ ears: 1 }, { ears: 0 }]],
-  ['black', 'black', -1.7, -1.45, 0.85, [{}]],
+  ['black', 'black', -0.85, -1.3, 0.85, [{}]],
 ];
 const shoes = [];
 for (const [seg, kind, x, z, ry, opts] of PILE) {
@@ -212,7 +212,7 @@ let labels = [];
 const L = fn => labels.push(fn);
 const drop = lt => (1 - bounce(lt / 0.7)) * 5;
 const PLACE_AT = 0.3, FLY = 0.55;
-const OWNER = [0.45, -1.7, -1.0];        // 主人站的位置 (x, z, 朝向)
+const OWNER = [0.45, -1.7, -1.8];        // 主人站的位置 (x, z, 朝向)
 const handPos = new THREE.Vector3();
 
 function placeShoes(gt) {   // 每段开头, 主人手里的鞋飞到鞋堆上 (之前的鞋一直留着)
@@ -221,7 +221,7 @@ function placeShoes(gt) {   // 每段开头, 主人手里的鞋飞到鞋堆上 (
     s.g.visible = u >= 0;
     if (u < 0) continue;
     const k = smooth(u);
-    const from = new THREE.Vector3(OWNER[0] - 0.6, 1.2, OWNER[1] + 0.25);
+    const from = new THREE.Vector3(OWNER[0] + 0.55 * Math.sin(OWNER[2]), 1.2, OWNER[1] + 0.55 * Math.cos(OWNER[2]));
     s.g.position.lerpVectors(from, s.to, k);
     s.g.position.y = u < 1 ? lerp(from.y, 0, k) + 0.9 * Math.sin(Math.PI * k) : 0;
     s.g.rotation.set(u < 1 ? (1 - k) * 2.2 : 0, s.ry + (u < 1 ? (1 - k) * 3 : 0), 0);
@@ -232,8 +232,69 @@ function placeShoes(gt) {   // 每段开头, 主人手里的鞋飞到鞋堆上 (
 // 狗面壁的位置: press 越大越贴墙
 function dogAtWall(press) { dog.root.position.set(-2.65, 0, lerp(-2.25, -2.45, press)); dog.root.rotation.y = Math.PI + 0.12; }
 
-const WIDE = { pos: [-0.4, 3.0, 7.6], tgt: [-1.15, 2.0, -2.2] };
-const CLOSE = { pos: [1.0, 2.0, -2.95], tgt: [-2.35, 1.75, -3.0] };
+// ------------------------------------------------------------------ 分镜表 (导演思路)
+// 竖屏 = 用纵深调度代替左右摆位: 前景/背景分层, 正反打, 插入镜头, 主观镜头, 希区柯克变焦.
+// 安全区: 左侧 HUD (y 520–850), 底部字幕 (y 1480–1650), 顶部弹幕 (y 140–490) —— 主体尽量放在中间偏右.
+// 每个镜头: [起, 止, 机位起, 机位止, 看点起, 看点止, fov起, fov止, 荷兰角, 标签]
+// 位置可以是世界坐标, 或 ['head'|'mouth'|'owner', dx, dy, dz] (相对角色实时位置)
+const SHOTS = {
+  title: [[0, 3.0, [2.3, 3.9, 2.5], [1.8, 3.6, 2.0], [-2.9, 1.9, -2.8], null, 56, 54, 0, 'wide']],  // 一点透视: 墙角两条线汇聚到狗身上
+  flip: [
+    [0, 1.55, [3.2, 3.3, 1.5], [3.0, 3.2, 1.25], [-1.7, 1.2, -2.5], null, 50, 48, 0, 'ots'],      // 过肩: 前景主人, 背景面壁的狗
+    [1.55, 3.4, ['head', 3.6, 0.15, 0.2], ['head', 3.2, 0.12, 0.15], ['head', 0, 0, 0], null, 40, 40, 0, 'dog'],  // 反应: 狗中近景斜眼
+  ],
+  croc: [
+    [0, 1.3, [-0.05, 0.42, -0.45], [-0.15, 0.4, -0.6], [-1.2, 0.5, -2.85], null, 44, 42, 0, 'insert'], // 贴地插入: 洞洞鞋砸进前景
+    [1.3, 3.2, ['head', 3.0, 0.1, 0.15], ['head', 2.7, 0.08, 0.1], ['head', 0, 0, 0], null, 40, 40, 0, 'dog'],
+  ],
+  plaid: [
+    [0, 1.45, [-1.95, 0.8, -2.15], [-1.8, 0.78, -2.05], ['owner', 0, -0.3, 0], null, 52, 50, 0, 'pov'],  // 反打: 狗的视角仰拍主人, 鞋朝镜头飞来
+    [1.45, 3.2, ['head', 3.6, 0.3, 0.2], ['head', 3.5, 0.3, 0.2], ['head', 0, 0.3, 0], null, 25, 21, 0, 'dog'],  // 大特写: 眼睛 + 泪光
+  ],
+  bunny: [
+    [0, 1.25, [3.1, 3.4, 1.3], [2.9, 3.3, 1.05], [-1.5, 1.0, -2.4], null, 50, 48, 0, 'ots'],
+    [1.25, 2.25, [-0.25, 2.5, -1.85], [-0.28, 2.15, -1.95], [-0.42, 0.2, -2.42], null, 40, 40, 0, 'insert'],  // 俯拍插入: 只剩一只耳朵 (停一拍)
+    [2.25, 3.6, ['head', 3.8, 0.2, 0.2], ['head', 3.5, 0.2, 0.18], ['head', 0, 0, 0], null, 40, 40, 0.17, 'dog'],  // 荷兰角: 心慌
+  ],
+  black: [
+    [0, 1.5, [0.7, 4.4, 1.7], [0.55, 4.15, 1.35], [-1.45, 0.6, -2.3], null, 46, 45, 0, 'wide'],      // 大俯拍: 鞋堆已经一大片
+    [1.5, 3.6, ['mouth', 3.0, 0.7, 3.6], ['mouth', 1.15, 0.3, 1.35], ['mouth', 0, 0.3, 0], null, 16, 42, 0, 'dog'],  // 希区柯克变焦: 推到嘴上
+  ],
+  drop: [
+    [0, 1.45, ['mouth', 1.0, 0.3, 1.3], ['mouth', 0.9, 0.28, 1.15], ['mouth', 0, 0, 0], null, 38, 38, 0, 'dog'],  // 嘴部大特写, 静等松口
+    [1.45, 2.05, [-0.85, 0.3, -0.5], [-0.9, 0.3, -0.6], [-2.05, 0.2, -2.0], null, 46, 46, 0.06, 'insert'], // 贴地: 鞋砸到地上
+    [2.05, 3.4, [-0.3, 1.5, 1.4], [0.2, 3.5, 3.4], [-1.4, 1.0, -2.2], [-1.3, 0.9, -2.2], 44, 44, 0, 'wide'],  // 升降拉远: 全貌揭晓
+  ],
+  why: [[0, 4.8, null, null, [0, 1.4, 0], null, 36, 36, 0, 'orbit']],
+  warm: [
+    [0, 1.3, [-0.3, 2.1, 2.2], [-0.4, 2.0, 1.9], ['head', 0, -0.2, 0], null, 46, 44, 0, 'dog'],   // 第一次正脸: 狗转身
+    [1.3, 4.8, [0.8, 3.0, 6.6], [0.6, 2.8, 5.6], [-0.4, 1.6, -0.7], null, 40, 40, 0, 'wide'],        // 双人镜头: 跑向主人
+  ],
+  end: [[0, 4.0, [0, 1.9, 9.6], [0, 1.9, 9.0], [0, 2.5, 0], null, 36, 36, 0, 'wide']],
+};
+let SHOT = { tag: 'wide', i: 0, lt0: 0 };
+const _w = new THREE.Vector3();
+function anchor(a) {
+  if (a[0] === 'head') { dog.headPivot.localToWorld(_w.set(0, 0.35, 0.45)); }
+  else if (a[0] === 'mouth') { dog.held.getWorldPosition(_w); }
+  else if (a[0] === 'owner') { person.headG.localToWorld(_w.set(0, 0.4, 0)); }
+  else return new THREE.Vector3(...a);
+  return _w.clone().add(new THREE.Vector3(a[1], a[2], a[3]));
+}
+function shotCamera(name, lt) {
+  const list = SHOTS[name]; let k = list.length - 1; while (k > 0 && lt < list[k][0]) k--;
+  const [t0, t1, p0, p1, g0, g1, f0, f1, roll, tag] = list[k];
+  const u = smooth(clamp((lt - t0) / (t1 - t0))), e = clamp((lt - t0) / (t1 - t0));
+  SHOT = { tag, i: k, lt0: t0 };
+  dog.root.updateMatrixWorld(true); person.root.updateMatrixWorld(true);
+  let pos;
+  if (tag === 'orbit') { const a = -0.5 + lt * 0.22; pos = new THREE.Vector3(8.4 * Math.sin(a), 2.3, 8.4 * Math.cos(a)); }
+  else pos = anchor(p0).lerp(anchor(p1 || p0), u);
+  const tgt = anchor(g0).lerp(anchor(g1 || g0), u);
+  // 希区柯克变焦 (fov 起止相差大时) 用线性, 其他用缓动
+  camera.fov = Math.abs(f1 - f0) > 10 ? lerp(f0, f1, e * e * (3 - 2 * e)) : lerp(f0, f1, u);
+  return { pos, tgt, roll, cut: lt - t0, first: k === 0 };
+}
 
 function setup(name, lt, dur, gt) {
   room.visible = true; stage.visible = false; dog.root.visible = false; person.root.visible = false;
@@ -246,7 +307,6 @@ function setup(name, lt, dur, gt) {
   placeShoes(gt);
   mouthShoe.visible = false;
   // 鞋堆只在屋里出现
-  let camPos = WIDE.pos, camTgt = WIDE.tgt;
   const held = () => {   // 狗嘴里叼着的那只
     mouthShoe.visible = true; dog.root.updateMatrixWorld(true);
     dog.held.getWorldPosition(mouthShoe.position);
@@ -272,29 +332,24 @@ function setup(name, lt, dur, gt) {
       eyes: squeeze ? 'squeeze' : 'normal', look: -1 * Math.max(peek, side), wag: 0.12, wagHz: 0.8, tear: pressV > 0.8 ? 1 : 0, ...extra });
     if (!extra.noHeld) held();
     dust.visible = press > 0.3; dust.position.set(-2.3, 0.3, WALL_Z + 0.25);
-    // 镜头: 先全景看鞋飞过去, 再切到狗脸特写
-    const c = smooth((lt - 1.25) / 0.35);
-    camPos = WIDE.pos.map((v, i) => lerp(v, CLOSE.pos[i], c)); camTgt = WIDE.tgt.map((v, i) => lerp(v, CLOSE.tgt[i], c));
-    camera.fov = lerp(42, 40, c);
     L(() => {   // 顶墙的压力线
-      if (press < 0.3 || c < 0.5) return;
+      if (press < 0.3 || SHOT.tag !== 'dog') return;
       const [x, y] = proj(dog.headPivot, [0, 0.5, 0.55]);
       ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 7; ctx.lineCap = 'round';
       for (let i = 0; i < 3; i++) { const a = -2.4 + i * 0.35 + 0.05 * Math.sin(gt * 20 + i), r0 = 150 + 10 * Math.sin(gt * 30 + i);
         ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); ctx.lineTo(x + Math.cos(a) * (r0 + 60 * press), y + Math.sin(a) * (r0 + 60 * press)); ctx.stroke(); }
     });
-    return { press, land, c };
+    return { press, land };
   };
   const shoeLabel = (seg, s1, col, off = [0, 0.55, 0], at = PLACE_AT + FLY) =>
     L(() => { const sh = shoes.find(s => s.seg === seg); const [x, y] = projP(sh.g.position.clone().add(new THREE.Vector3(...off))); pill(s1, x, y, 38, col, '#fff', lt - at); });
 
   switch (name) {
     case 'title': {
-      dog.root.position.set(0.5, 0, 0.3); dog.root.rotation.y = -0.4;
-      dog.update(gt, { hop: 1, wag: 0.6, wagHz: 3, yaw: 0.3 * Math.sin(lt * 2), tilt: 0.15 * Math.sin(lt * 2.6), eyes: 'happy', perk: 0.3 });
+      // 开场: 空荡荡的角落里, 一只狗背对镜头面壁 (还叼着鞋, 尾巴轻轻摇)
+      dogAtWall(0.1);
+      dog.update(gt, { press: 0.1, sad: 0.3, yaw: -0.5 + 0.25 * Math.sin(lt * 1.6), look: -1, wag: 0.35, wagHz: 1.6 });
       held();
-      camPos = [0.4, 3.0, 8.6]; camTgt = [0.2, 2.4, 0];
-      L(() => { const [x, y] = proj(dog.headPivot, [0, 1.3, 0]); bubble('今天也很乖', x, y - 40, 40, lt - 1.0); });
       break;
     }
     case 'flip': {
@@ -323,18 +378,18 @@ function setup(name, lt, dur, gt) {
     }
     case 'bunny': {
       owner({ hips: true });
-      const { c } = wallScene(0.85, { ears: 1 });
+      wallScene(0.85, { ears: 1 });
       shoeLabel('bunny', '奶奶的！！', PINK, [0, 0.9, 0]);
-      L(() => pill('耳朵：只剩一只', 540, 1250, 44, PINK, '#fff', lt - 1.1));
+      L(() => { if (lt > 1.25 && lt < 2.25) pill('耳朵：只剩一只', 540, 1250, 48, PINK, '#fff', lt - 1.4); });
       L(() => pop('🐰？', 820, 560, 90, PINK, lt - 1.9));
-      L(() => { if (c > 0.8) { const [x, y] = proj(dog.headPivot, [0, 1.2, 0.3]); bubble('完了完了', x - 80, y - 30, 42, lt - 2.2); } });
+      L(() => { if (lt > 2.25) { const [x, y] = proj(dog.headPivot, [0, 1.2, 0.3]); bubble('完了完了', x - 80, y - 30, 42, lt - 2.2); } });
       break;
     }
     case 'black': {   // 只放下右脚那只 → 左脚那只呢？→ 镜头推到狗嘴
       owner({ hips: true });
-      const { c } = wallScene(1.0, { yawOff: -0.4 });
+      wallScene(1.0, { yawOff: -0.4 });
       L(() => { const sh = shoes.find(s => s.seg === 'black'); const [x, y] = projP(sh.g.position.clone().add(new THREE.Vector3(0, 0.5, 0))); pill('右脚 ✓', x, y, 40, '#4a4452', '#fff', lt - PLACE_AT - FLY); });
-      L(() => { if (c > 0.6) {
+      L(() => { if (lt > 2.4) {
         const [x, y] = projP(mouthShoe.position);
         const s = 120 + 12 * Math.sin(gt * 10); ctx.strokeStyle = '#ff3d6e'; ctx.lineWidth = 9;
         for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { ctx.beginPath(); ctx.moveTo(x + sx * s, y + sy * s * 0.5); ctx.lineTo(x + sx * s, y + sy * s); ctx.lineTo(x + sx * s * 0.5, y + sy * s); ctx.stroke(); }
@@ -360,9 +415,6 @@ function setup(name, lt, dur, gt) {
         mouthShoe.position.y = u < 1 ? from.y * (1 - u * u) : 0.0 + 0.12 * Math.abs(Math.sin((lt - DROP_AT - 0.45) * 9)) * Math.exp(-(lt - DROP_AT - 0.45) * 5);
         mouthShoe.rotation.set((1 - u) * 1.4, 0.4 + u * 2.2, 0);
       }
-      const c = smooth((lt - DROP_AT - 0.3) / 0.5);
-      camPos = CLOSE.pos.map((v, i) => lerp(v, [-0.5, 2.7, 5.2][i], c)); camTgt = CLOSE.tgt.map((v, i) => lerp(v, [-1.5, 1.5, -2.3][i], c));
-      camera.fov = 40;
       L(() => pop('松……口……', 540, 600, 80, LAV, lt - 0.3));
       L(() => pop('啪嗒！', 540, 560, 150, '#ff3d6e', lt - DROP_AT - 0.42));
       L(() => { const [x, y] = projP(DROP_TO.clone().add(new THREE.Vector3(0, 0.5, 0))); pill('左脚：已上交', x, y, 42, '#4a4452', '#fff', lt - DROP_AT - 0.9); });
@@ -375,7 +427,6 @@ function setup(name, lt, dur, gt) {
       dog.update(gt, { dropY: drop(lt), yaw: -0.4 * Math.sin(lt * 1.3), tilt: 0.15 * Math.sin(lt * 1.9), look: Math.sin(lt * 1.3), sad: 0.5, wag: 0.3 });
       ['鞋上全是你的味道', '啃咬能解压、磨牙', '无聊或想你时更爱咬', '“愧疚脸”多半是看你脸色']
         .forEach((s, i) => L(() => pill(s, 540, 290 + i * 116, 40, '#ffffff', INK, lt - 0.3 - i * 0.7)));
-      camPos = [0, 2.3, 8.4]; camTgt = [0, 1.4, 0];
       break;
     }
     case 'warm': {    // 主人蹲下张开手, 金毛转身跑过去
@@ -388,7 +439,6 @@ function setup(name, lt, dur, gt) {
       person.update(gt, { reach: lt > 0.6, headYaw: 0.2 });
       hearts.forEach((h, i) => { if (lt < 2.2) return; h.visible = true; const u = ((lt - 2.2) * 0.45 + i / 14) % 1; h.position.set(-0.1 + Math.sin(i * 2.1) * 1.4 + 0.2 * Math.sin(lt * 2 + i), 1 + u * 3.2, -0.4 + Math.cos(i) * 0.5); h.scale.setScalar(0.35 * Math.sin(Math.PI * u) + 0.01); });
       hemi.color.set('#ffe6d6');
-      camPos = [0.8, 3.0, 7.6]; camTgt = [-0.5, 1.8, -0.9];
       L(() => pill('原谅 ✓', 540, 1250, 46, MINT, '#fff', lt - 2.4));
       break;
     }
@@ -402,30 +452,32 @@ function setup(name, lt, dur, gt) {
       person.root.position.set(1.15, 0, -0.9); person.root.rotation.y = -0.4; person.root.scale.setScalar(0.95);
       person.update(gt, { phone: true, headYaw: -0.2 });
       hearts.forEach((h, i) => { h.visible = true; const u = (lt * 0.4 + i / 14) % 1; h.position.set(Math.sin(i * 2.1) * 2.2, 0.6 + u * 4, -0.8 + Math.cos(i) * 0.6); h.scale.setScalar(0.4 * Math.sin(Math.PI * u) + 0.01); });
-      camPos = [0, 1.9, 9.6]; camTgt = [0, 2.5, 0];
       break;
     }
   }
   if (name !== 'end') person.root.scale.setScalar(1);
   camera.updateProjectionMatrix();
-  return { camPos, camTgt };
 }
 
 window.renderAt = (gt) => {
   let i = SCENES.length - 1; while (i > 0 && gt < STARTS[i]) i--;
   const sc = SCENES[i], name = sc[1], dur = sc[0], lt = gt - STARTS[i];
   labels = [];
-  let { camPos, camTgt } = setup(name, lt, dur, gt);
-  if (window.CAM) { camPos = window.CAM[0]; camTgt = window.CAM[1]; if (window.CAM[2]) { camera.fov = window.CAM[2]; camera.updateProjectionMatrix(); } }
-  // 镜头: 冲进去回弹 + 慢推 + 手持晃动; 松口落地时震屏
-  const push = 1 - 0.05 * (lt / dur) - 0.14 * (1 - back(lt / 0.45));
-  let sh = name === 'black' ? 0.006 : 0;
-  if (name === 'drop') sh = 0.05 * Math.exp(-Math.max(0, lt - DROP_AT - 0.42) * 4) * (lt > DROP_AT + 0.42 ? 1 : 0.15);
-  const dir = new THREE.Vector3(...camPos).sub(new THREE.Vector3(...camTgt));
-  const pos = new THREE.Vector3(...camTgt).add(dir.multiplyScalar(push));
-  const amp = dir.length() < 2.5 ? 0.04 : 0.14;
+  setup(name, lt, dur, gt);
+  const S = shotCamera(name, lt);
+  if (window.CAM) { S.pos = new THREE.Vector3(...window.CAM[0]); S.tgt = new THREE.Vector3(...window.CAM[1]); camera.fov = window.CAM[2] || camera.fov; }
+  camera.updateProjectionMatrix();
+  // 镜头: 每段第一个镜头冲进去回弹, 段内硬切只轻推一下; 慢推 + 手持晃动; 落地时震屏
+  const push = 1 - (S.first ? 0.14 : 0.05) * (1 - back(S.cut / 0.4));
+  let sh = 0;
+  if (name === 'drop') sh = lt > DROP_AT + 0.45 ? 0.05 * Math.exp(-(lt - DROP_AT - 0.45) * 4) : 0;
+  if (name === 'croc' || name === 'plaid' || name === 'bunny' || name === 'flip') { const d = lt - PLACE_AT - FLY; if (d > 0) sh = 0.025 * Math.exp(-d * 8); }
+  const dir = S.pos.clone().sub(S.tgt);
+  const pos = S.tgt.clone().add(dir.multiplyScalar(push));
+  const amp = Math.min(0.12, dir.length() * 0.015);
   pos.x += amp * Math.sin(lt * 0.9 + i) + sh * Math.sin(gt * 53); pos.y += amp * 0.5 * Math.sin(lt * 1.3 + i * 2) + sh * Math.cos(gt * 47);
-  camera.position.copy(pos); camera.lookAt(...camTgt);
+  camera.position.copy(pos); camera.up.set(0, 1, 0); camera.lookAt(S.tgt);
+  if (S.roll) camera.rotateZ(S.roll * smooth(S.cut / 0.3));
   camera.updateMatrixWorld();
   sparkRoom.material.uniforms.uTime.value = gt; petals.material.uniforms.uTime.value = gt; dust.material.uniforms.uTime.value = gt;
   composer.render();
