@@ -1,0 +1,6 @@
+{
+  "name": "shoes-3d",
+  "private": true,
+  "description": "假如你家金毛把全家的鞋都咬了 — three.js 3D 版",
+  "dependencies": { "three": "0.165.0" }
+}
