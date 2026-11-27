@@ -83,15 +83,15 @@ const curtains = [];
 const bed = new THREE.Group(); room.add(bed);
 {
   const plank = canvasTex(512, 512, (g, w, h) => {
-    g.fillStyle = '#d49a70'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#c47a45'; g.fillRect(0, 0, w, h);
     const r = rng(3);
     for (let y = 0; y < h; y += 64) { g.fillStyle = `rgba(150,90,60,${0.15 + r() * 0.15})`; g.fillRect(0, y, w, 4); for (let k = 0; k < 6; k++) { g.fillStyle = 'rgba(255,230,200,0.12)'; g.fillRect(r() * w, y + 10 + r() * 40, 80 + r() * 120, 3); } }
   });
   plank.wrapS = plank.wrapT = THREE.RepeatWrapping; plank.repeat.set(3, 3);
   const floor = mesh(new THREE.PlaneGeometry(16, 16), std('#ffffff', { map: plank }), false, true); floor.rotation.x = -Math.PI / 2; room.add(floor);
-  const backW = mesh(new THREE.PlaneGeometry(16, 9), std('#f2a7c3'), false, true); backW.position.set(0, 4.5, -3.4); room.add(backW);
-  const leftW = mesh(new THREE.PlaneGeometry(10, 9), std('#b99ae6'), false, true); leftW.rotation.y = Math.PI / 2; leftW.position.set(-3.6, 4.5, 1.6); room.add(leftW);
-  const rightW = mesh(new THREE.PlaneGeometry(10, 9), std('#b99ae6'), false, true); rightW.rotation.y = -Math.PI / 2; rightW.position.set(3.8, 4.5, 1.6); room.add(rightW);
+  const backW = mesh(new THREE.PlaneGeometry(16, 9), std('#e2648f'), false, true); backW.position.set(0, 4.5, -3.4); room.add(backW);
+  const leftW = mesh(new THREE.PlaneGeometry(10, 9), std('#8a62d6'), false, true); leftW.rotation.y = Math.PI / 2; leftW.position.set(-3.6, 4.5, 1.6); room.add(leftW);
+  const rightW = mesh(new THREE.PlaneGeometry(10, 9), std('#8a62d6'), false, true); rightW.rotation.y = -Math.PI / 2; rightW.position.set(3.8, 4.5, 1.6); room.add(rightW);
   // 窗外: 黄昏的马卡龙小城 + 月亮
   const skyline = canvasTex(512, 384, (g, w, h) => {
     const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#9b8cf0'); gr.addColorStop(0.6, '#f5a8c8'); gr.addColorStop(1, '#ffd9b0'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
@@ -108,21 +108,21 @@ const bed = new THREE.Group(); room.add(bed);
   }
   for (const x of [-0.25, 3.05]) {   // 窗帘 (会飘)
     const piv = new THREE.Group(); piv.position.set(x, 4.35, -3.2); room.add(piv);
-    const c = box(0.55, 2.5, 0.08, '#ffd27a', 0.04); c.position.y = -1.25; piv.add(c);
+    const c = box(0.55, 2.5, 0.08, '#ffb21f', 0.04); c.position.y = -1.25; piv.add(c);
     curtains.push(piv);
   }
-  const sofaM = std('#e8676f');
+  const sofaM = std('#2fa8a0');
   const sb = box(3.0, 0.7, 1.2, sofaM, 0.12); sb.position.set(-1.7, 0.45, -2.6); room.add(sb);
   const sr = box(3.0, 1.0, 0.4, sofaM, 0.12); sr.position.set(-1.7, 1.2, -3.1); room.add(sr);
   for (const x of [-3.25, -0.15]) { const a = box(0.4, 1.1, 1.2, sofaM, 0.12); a.position.set(x, 0.55, -2.6); room.add(a); }
-  for (const x of [-2.4, -1.0]) { const c = box(1.2, 0.25, 1.0, '#f39aa0', 0.1); c.position.set(x, 0.92, -2.5); room.add(c); }
+  for (const x of [-2.4, -1.0]) { const c = box(1.2, 0.25, 1.0, '#ffd23f', 0.1); c.position.set(x, 0.92, -2.5); room.add(c); }
   const pot = box(0.5, 0.5, 0.5, '#ec8a74', 0.06); pot.position.set(3.1, 0.25, -2.5); room.add(pot);
   for (let i = 0; i < 6; i++) { const l = box(0.13, 0.8, 0.13, '#5aae73', 0.04); l.position.set(2.98 + i * 0.05, 0.85, -2.5); l.rotation.z = -0.6 + i * 0.24; room.add(l); }
-  const rug = mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.03, 48), std('#f7c1d3'), false, true); rug.position.set(0.1, 0.015, 0.4); room.add(rug);
+  const rug = mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.03, 48), std('#ff6f9e'), false, true); rug.position.set(0.1, 0.015, 0.4); room.add(rug);
   // 狗窝: 紫色底座 + 奶白坐垫 + 圆环边
-  const base = mesh(new THREE.CylinderGeometry(1.55, 1.6, 0.22, 40), std('#b9a0ee')); base.position.y = 0.11; bed.add(base);
-  const cush = mesh(new THREE.CylinderGeometry(1.3, 1.3, 0.1, 40), std('#fff0f5')); cush.position.y = 0.25; bed.add(cush);
-  const rim = mesh(new THREE.TorusGeometry(1.4, 0.24, 16, 48), std('#cdb8f4')); rim.rotation.x = Math.PI / 2; rim.position.y = 0.32; bed.add(rim);
+  const base = mesh(new THREE.CylinderGeometry(1.55, 1.6, 0.22, 40), std('#6a48d0')); base.position.y = 0.11; bed.add(base);
+  const cush = mesh(new THREE.CylinderGeometry(1.3, 1.3, 0.1, 40), std('#ffd84a')); cush.position.y = 0.25; bed.add(cush);
+  const rim = mesh(new THREE.TorusGeometry(1.4, 0.24, 16, 48), std('#8a66f0')); rim.rotation.x = Math.PI / 2; rim.position.y = 0.32; bed.add(rim);
   // 食盆 + 玩具球
   const bowl = mesh(new THREE.CylinderGeometry(0.34, 0.26, 0.2, 32), std('#7fb6ec')); bowl.position.set(2.3, 0.1, 1.6); room.add(bowl);
   const toy = mesh(new THREE.SphereGeometry(0.22, 24, 16), std('#ffd34d', { roughness: 0.5 })); toy.position.set(-1.9, 0.22, 1.5); room.add(toy);
@@ -133,13 +133,13 @@ const dream = new THREE.Group(); scene.add(dream);
 const clouds = [], farGroup = new THREE.Group(); dream.add(farGroup);
 {
   const grass = canvasTex(256, 256, (g, w, h) => {
-    g.fillStyle = '#9fdc8a'; g.fillRect(0, 0, w, h); const r = rng(21);
-    for (let i = 0; i < 260; i++) { g.fillStyle = r() < 0.5 ? 'rgba(120,200,110,0.6)' : 'rgba(200,245,170,0.6)'; g.fillRect(r() * w, r() * h, 3, 9); }
+    g.fillStyle = '#5cc24e'; g.fillRect(0, 0, w, h); const r = rng(21);
+    for (let i = 0; i < 260; i++) { g.fillStyle = r() < 0.5 ? 'rgba(60,160,60,0.6)' : 'rgba(160,230,120,0.6)'; g.fillRect(r() * w, r() * h, 3, 9); }
   });
   grass.wrapS = grass.wrapT = THREE.RepeatWrapping; grass.repeat.set(60, 60);
   const ground = mesh(new THREE.PlaneGeometry(300, 300), std('#ffffff', { map: grass }), false, true); ground.rotation.x = -Math.PI / 2; ground.position.x = 50; dream.add(ground);
-  const path = mesh(new THREE.PlaneGeometry(300, 2.4), std('#f8e2b6'), false, true); path.rotation.x = -Math.PI / 2; path.position.set(50, 0.01, 0); dream.add(path);
-  const r = rng(33), cc = ['#ff9fc2', '#8fd3f5', '#ffe07a', '#c6a8f5', '#ffb38a', '#9fe6b8'];
+  const path = mesh(new THREE.PlaneGeometry(300, 2.4), std('#f5b95a'), false, true); path.rotation.x = -Math.PI / 2; path.position.set(50, 0.01, 0); dream.add(path);
+  const r = rng(33), cc = ['#ff4f8f', '#2fa8f0', '#ffcc1f', '#8f5cf0', '#ff7a3d', '#22c49a'];
   for (let x = -20; x < 120; x += 2.6 + r() * 2) {      // 棒棒糖树
     const z = -4.5 - r() * 9, hgt = 1.4 + r() * 1.4;
     const tr = box(0.22, hgt, 0.22, '#c48a5c', 0.05); tr.position.set(x, hgt / 2, z); dream.add(tr);
@@ -157,10 +157,10 @@ const clouds = [], farGroup = new THREE.Group(); dream.add(farGroup);
     clouds.push(c);
   }
   // 远景: 小山 + 彩虹 (跟着镜头, 形成视差)
-  for (const [x, s, c] of [[-30, 18, '#8fd07e'], [0, 24, '#b6e59a'], [32, 20, '#9fdc8a'], [60, 22, '#c2eaa4']]) {
+  for (const [x, s, c] of [[-30, 18, '#3fae5a'], [0, 24, '#6cc95a'], [32, 20, '#4fbb63'], [60, 22, '#7fd36a']]) {
     const h = mesh(new THREE.SphereGeometry(1, 32, 16), std(c), false, true); h.scale.set(s, s * 0.32, s * 0.6); h.position.set(x, -1, -60); farGroup.add(h);
   }
-  ['#ff8fa8', '#ffb877', '#ffe57a', '#9fe6a0', '#8fc8f5', '#b9a2f2'].forEach((c, i) => {
+  ['#ff4f6f', '#ff9a2e', '#ffd92e', '#4fd06a', '#3a9cf0', '#8a5cf0'].forEach((c, i) => {
     const t = new THREE.Mesh(new THREE.TorusGeometry(26 - i * 1.1, 0.55, 8, 64, Math.PI), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.85 }));
     t.position.set(6, -2, -80); farGroup.add(t);
   });
@@ -176,12 +176,12 @@ bubbles.forEach(b => scene.add(b.root));
 const trail = [0.07, 0.11, 0.16].map(r => { const b = makeBubble(r); scene.add(b.root); return b; });
 const mk = (fn) => { const g = new THREE.Group(); fn(g); g.traverse(o => { if (o.isMesh) o.castShadow = true; }); return g; };
 const makeFrisbee = () => mk(g => {
-  const d = mesh(new THREE.CylinderGeometry(0.36, 0.33, 0.06, 32), std('#ff7aa6')); g.add(d);
+  const d = mesh(new THREE.CylinderGeometry(0.36, 0.33, 0.06, 32), std('#ff3d7f')); g.add(d);
   const r = mesh(new THREE.TorusGeometry(0.34, 0.035, 8, 32), std('#ffd34d')); r.rotation.x = Math.PI / 2; g.add(r);
 });
 const makeBall = () => mk(g => { g.add(mesh(new THREE.SphereGeometry(0.3, 28, 18), std('#ffd34d', { roughness: 0.45 })));
   const s = mesh(new THREE.TorusGeometry(0.3, 0.035, 8, 32), std('#ffffff')); s.rotation.y = Math.PI / 2; g.add(s); });
-const makeSlipper = () => mk(g => { const s = box(0.3, 0.08, 0.72, '#9fc8f2', 0.04); g.add(s); const st = box(0.34, 0.16, 0.22, '#ffffff', 0.06); st.position.set(0, 0.08, 0.15); g.add(st); });
+const makeSlipper = () => mk(g => { const s = box(0.3, 0.08, 0.72, '#2f8ff0', 0.04); g.add(s); const st = box(0.34, 0.16, 0.22, '#ffffff', 0.06); st.position.set(0, 0.08, 0.15); g.add(st); });
 const makeSausage = () => mk(g => { const s = mesh(new THREE.CapsuleGeometry(0.13, 0.5, 6, 16), std('#e5735f', { roughness: 0.5 })); s.rotation.z = Math.PI / 2; g.add(s);
   for (const sx of [-1, 1]) { const k = box(0.05, 0.05, 0.05, '#fff1d6', 0.01); k.position.x = sx * 0.4; g.add(k); } });
 // 主泡泡里的东西
@@ -342,7 +342,7 @@ function setup(name, lt, dur, gt) {
     case 'field': case 'cat': case 'rain': {
       room.visible = false; dream.visible = true;
       G.uDream.value = 1; G.uWob.value = 0.25 + 1.6 * (1 - smooth(lt / 0.9)); bloom.strength = 0.28;
-      setSky('#b49cf2', '#ffd6ec'); hemi.color.set('#fff0fa'); hemi.intensity = 1.6;
+      setSky('#6f52e0', '#ff8cc0'); hemi.color.set('#fff0fa'); hemi.intensity = 1.5;
       clouds.forEach((c, i) => { c.position.x = -20 + i * 12 + ((gt * 0.6) % 12); });
       let dx = 0, camX = 0;
       if (name === 'field') {
@@ -408,7 +408,7 @@ function setup(name, lt, dur, gt) {
       break;
     }
     case 'why': {
-      room.visible = false; stage.visible = true; stage.material.color.set('#c7b2f0'); setSky('#a98ae0', '#d8c6f6');
+      room.visible = false; stage.visible = true; stage.material.color.set('#9a74f0'); setSky('#5a3cc8', '#b28cf0');
       dog.root.position.set(0, 0, 0.3); dog.root.rotation.y = 0.6 + 0.15 * Math.sin(lt * 0.7);
       dog.update(gt, { lie: 1, eyes: 'sleep', rem: true, paddle: 0.35, wag: 0.25, dropY: drop(lt) });
       ['快速眼动期：眼皮抖、爪子抽', '科学家推测：梦的多半是白天的事', '小型犬做梦更勤，每次更短', '“每分钟一个梦”是夸张效果']
@@ -441,7 +441,7 @@ function setup(name, lt, dur, gt) {
       break;
     }
     case 'end': {
-      room.visible = false; stage.visible = true; stage.material.color.set('#f9b6cd'); setSky('#f597bc', '#ffd0e0');
+      room.visible = false; stage.visible = true; stage.material.color.set('#ff6f9e'); setSky('#e83f7f', '#ff9cc4');
       dog.root.scale.setScalar(0.8); dog.root.rotation.y = 0.3 * Math.sin(lt * 1.2);
       dog.update(gt, { hop: 0.6, eyes: 'happy', tongue: true, wag: 1, yaw: 0.35 * Math.sin(lt * 2), tilt: 0.15 * Math.sin(lt * 2.5), perk: 0.3 });
       hearts.forEach((h, i) => { h.visible = true; const q = (lt * 0.35 + i / 14) % 1;

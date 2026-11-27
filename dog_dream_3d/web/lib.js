@@ -392,13 +392,13 @@ export function makeFox() {
 }
 
 // ------------------------------------------------------------------ 奶油色方块狗 (同款方块风: 大方头 + 方眼高光; 垂耳; 身上是小骨头和小脚印花纹)
-export const DOG = { head: '#fde8cc', body: '#fbdcb8', ear: '#e3a274', earIn: '#f6c7a4', muzzle: '#fff5e8', sock: '#fff7ec', tail: '#f3c69a', collar: '#ff7aa6', tag: '#f6c64a' };
+export const DOG = { head: '#f2a14f', body: '#ee9446', ear: '#b85a26', earIn: '#f6c08e', muzzle: '#fff4e4', sock: '#fff6ea', tail: '#e8873e', collar: '#e8336f', tag: '#ffc928' };
 
 function drawDogFace(g, s) {
   const w = 520, h = 440; g.clearRect(0, 0, w, h);
-  g.fillStyle = 'rgba(240,110,140,0.7)';                       // 腮红
+  g.fillStyle = 'rgba(236,72,120,0.85)';                        // 腮红
   for (const x of [40, 412]) { g.beginPath(); g.roundRect(x, 262, 68, 30, 8); g.fill(); }
-  g.fillStyle = '#d9915f';                                       // 柴犬式小眉点
+  g.fillStyle = '#fff1dc';                                       // 柴犬式小眉点 (白色)
   for (const x of [150, 370]) { g.beginPath(); g.roundRect(x - 26, 58 - (s.brow || 0) * 14, 52, 22, 9); g.fill(); }
   for (const ex of [150, 370]) {
     const ey = 168, lx = s.look * 12, ly = s.lookY * 8;
@@ -440,7 +440,7 @@ const pawTex = canvasTex(256, 256, (g, w, h) => {
     for (const [bx, by] of [[-17, -6], [-17, 6], [17, -6], [17, 6]]) { g.beginPath(); g.arc(bx, by, 7, 0, 7); g.fill(); } g.restore(); };
   const paw = (x, y, a, c) => { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = c; g.beginPath(); g.ellipse(0, 6, 11, 9, 0, 0, 7); g.fill();
     for (const [px, py] of [[-12, -8], [-4, -14], [5, -14], [13, -8]]) { g.beginPath(); g.ellipse(px, py, 4.5, 5.5, 0, 0, 7); g.fill(); } g.restore(); };
-  const cols = ['#ffffff', '#e3a274', '#a9cdf2', '#f59ab4'];
+  const cols = ['#ffffff', '#9a4a1e', '#2fb3a3', '#ff5c93'];
   let k = 0;
   for (let gy = 0; gy < 2; gy++) for (let gx = 0; gx < 2; gx++) {
     const x = gx * 128 + 44 + (gy % 2) * 40 + r() * 20, y = gy * 128 + 44 + r() * 30, a = (r() - 0.5) * 1.6;
