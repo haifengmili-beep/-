@@ -1,0 +1,6 @@
+{
+  "name": "dog-choice-3d",
+  "private": true,
+  "description": "假如你家狗每分钟做一次选择 — three.js 3D 版",
+  "dependencies": { "three": "0.165.0" }
+}
