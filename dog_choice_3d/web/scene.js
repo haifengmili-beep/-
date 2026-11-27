@@ -311,7 +311,7 @@ function drawDanmaku(gt) {
   const dens = clamp((gt - start) / 1.6), r = rng(2026);
   const cols = ['#ffffff', '#ffe98f', '#a9e4ff', '#ffb3cf', '#bdf7c6'];
   for (let i = 0; i < 64; i++) {
-    const t0 = start + (r() * (end - start + 2) - 2), sp = 300 + r() * 160, y = 520 + Math.floor(r() * 9) * 52;
+    const t0 = start + (r() * (end - start + 2) - 2), sp = 300 + r() * 160, y = [470, 980, 1035, 1090, 1145, 1200, 1255, 1310, 1365][Math.floor(r() * 9)];
     const col = cols[Math.floor(r() * 5)], s = DANMAKU[Math.floor(r() * DANMAKU.length)], keep = r() <= dens;
     const x = W - (gt - t0) * sp;
     if (x < -500 || x > W || !keep) continue;
