@@ -1,0 +1,6 @@
+{
+  "name": "dog-dream-3d",
+  "private": true,
+  "description": "假如你家狗每分钟做一个梦 — three.js 3D 版",
+  "dependencies": { "three": "0.165.0" }
+}
