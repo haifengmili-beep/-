@@ -65,19 +65,24 @@ def main(path):
             f = mtof(base + rng.integers(-3, 8)); L = 0.06 + rng.random() * 0.05
             k = tt(L); s = np.sign(np.sin(2 * np.pi * f * k)) * 0.5 * np.sin(np.pi * k / L)
             add(s, t, vol); t += L + 0.02
-    for name, a, d in [("m1", 0.9, 0.4), ("m2", 0.8, 0.8), ("m5", 0.9, 1.4), ("m10", 0.8, 0.9), ("m20", 0.8, 1.1), ("m30", 0.7, 1.1), ("back", 2.0, 0.7)]:
+    for name, a, d in [("m1", 0.8, 0.45), ("m2", 0.7, 0.9), ("m5", 1.25, 1.3), ("m10", 1.15, 0.9), ("m20", 0.7, 1.1), ("m30", 0.6, 1.0), ("back", 1.95, 0.6)]:
         babble(STARTS[name] + a, d, base=74 if name != "back" else 79)
+    cuts = {"m1": [1.7], "m2": [2.0], "m5": [1.0], "m10": [1.0, 2.3], "m20": [2.0], "m30": [1.6, 2.6],
+            "m45": [0.6, 1.1, 1.55, 1.95, 2.35], "back": [1.3, 2.6]}
+    for name, ts in cuts.items():   # 段内切镜: 轻轻的 嗖
+        for c in ts: add(noise_sweep(0.18, 8), STARTS[name] + c - 0.09, 0.25)
     babble(STARTS["m45"] + 0.2, 3.5, base=76, vol=0.16)
     for name in ["m1", "m2", "m5", "m10", "m20", "m30", "m45", "why"]:
         add(np.sin(2 * np.pi * (180 - 120 * tt(0.25)) * tt(0.25)) * np.exp(-tt(0.25) * 10), STARTS[name] + 0.62, 0.3)  # 落地 咚
     woof(STARTS["title"] + 0.6); woof(STARTS["title"] + 0.9, 0.3, 380)
-    woof(STARTS["m5"] + 0.6, 0.4); woof(STARTS["m5"] + 2.6, 0.3)
+    woof(STARTS["m5"] + 1.05, 0.4); woof(STARTS["m5"] + 2.7, 0.3)
     for j in range(3):  # 敲门 咚咚咚
-        k = tt(0.12); add(np.sin(2 * np.pi * 140 * k) * np.exp(-k * 35) + 0.3 * rng.standard_normal(len(k)) * np.exp(-k * 60), STARTS["m5"] + 0.3 + j * 0.2, 0.5)
+        k = tt(0.12); add(np.sin(2 * np.pi * 140 * k) * np.exp(-k * 35) + 0.3 * rng.standard_normal(len(k)) * np.exp(-k * 60), STARTS["m5"] + 0.02 + j * 0.33, 0.5)
+    k = tt(0.6); add(np.sin(2 * np.pi * (300 + 120 * np.sin(k * 30)) * k) * np.sin(np.pi * k / 0.6) * 0.6, STARTS["back"] + 0.35, 0.15)  # 开门 吱
+    k = tt(0.45); add(np.sin(2 * np.pi * (500 + 300 * k) * k) * np.exp(-k * 5), STARTS["m20"] + 2.65, 0.25)  # 坐下
     add(noise_sweep(0.6), STARTS["m10"] + 0.2, 0.4)          # 棉花 噗
-    k = tt(0.5); add(np.sin(2 * np.pi * (300 + 500 * k) * k) * np.exp(-k * 5), STARTS["m20"] + 2.25, 0.3)  # 坐下 boing
-    k = tt(0.35); add(np.sin(2 * np.pi * (900 - 500 * k) * k) * np.exp(-k * 6), STARTS["m30"] + 1.2, 0.25)  # 喵?!
-    k = tt(0.3); add(np.sin(2 * np.pi * (600 + 900 * k) * k) * np.exp(-k * 7), STARTS["m1"] + 1.3, 0.2)     # 惊讶
+    k = tt(0.35); add(np.sin(2 * np.pi * (900 - 500 * k) * k) * np.exp(-k * 6), STARTS["m30"] + 1.7, 0.25)  # 喵?!
+    k = tt(0.3); add(np.sin(2 * np.pi * (600 + 900 * k) * k) * np.exp(-k * 7), STARTS["m1"] + 1.8, 0.2)     # 惊讶
     woof(STARTS["back"] + 2.9, 0.3, 420)
     soft = [(64, 67, 72), (62, 65, 69), (60, 64, 67), (60, 64, 67, 72), (65, 69, 72), (64, 67, 72), (60, 64, 67, 72)]
     for kk, ch in enumerate(soft):

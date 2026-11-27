@@ -1,4 +1,4 @@
-// 共享工具 + 3D 奶油色方块狗 + 粉色方块猫 (参考用户给的 3D 方块猫造型: 大方头、方眼睛白高光、四棱锥耳朵; 身体是小鱼花纹)
+// 共享工具 + 3D 橘色方块狗 + 方块女生 (参考 ref/) + 粉色方块猫 (参考用户给的 3D 方块猫造型: 大方头、方眼睛白高光、四棱锥耳朵; 身体是小鱼花纹)
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -249,244 +249,220 @@ export function makeCat() {
   return api;
 }
 
-// ------------------------------------------------------------------ 主人: 方块风女生 (长发 + 发卡 + 连衣裙, 大眼睛)
+// ------------------------------------------------------------------ 主人: 方块风女生 (参考 ref/girl_ref.png: 大方头、齐刘海、低双马尾+粉发圈、粉色蛋糕裙)
 function drawGirlFace(g, s) {
-  const w = 300, h = 280; g.clearRect(0, 0, w, h);
-  // 腮红
-  g.fillStyle = 'rgba(246,128,150,0.55)';
-  for (const x of [52, 248]) { g.beginPath(); g.ellipse(x, 190, 30, 15, 0, 0, 7); g.fill(); }
-  for (const [ex, sx] of [[95, -1], [205, 1]]) {
-    const ey = 140;
-    if (s.blink) {   // 闭眼: 弯弯的线 + 睫毛
-      g.strokeStyle = '#3a2230'; g.lineWidth = 7; g.lineCap = 'round';
-      g.beginPath(); g.arc(ex, ey - 6, 26, 0.15 * Math.PI, 0.85 * Math.PI); g.stroke();
-      continue;
+  const w = 400, h = 360; g.clearRect(0, 0, w, h);
+  g.fillStyle = '#ff8fab';                                             // 方形腮红
+  g.fillRect(38, 236, 84, 34); g.fillRect(278, 236, 84, 34);
+  for (const [ex, sx] of [[128, -1], [272, 1]]) {
+    const ey = 175, k = s.shock ? 1.12 : 1, lx = s.look * 8;
+    if (s.blink) {
+      g.fillStyle = '#2a1a14'; g.fillRect(ex - 50, ey + 10, 100, 14); g.fillRect(ex + sx * 44, ey + 2, 14, 12); continue;
     }
-    const k = s.shock ? 1.15 : 1;
-    // 眼白 + 棕色瞳孔 + 黑瞳 + 两个高光
-    g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(ex, ey, 30 * k, 38 * k, 0, 0, 7); g.fill();
-    g.fillStyle = '#7a4a3a'; g.beginPath(); g.ellipse(ex + s.look * 5, ey + 4, 24 * k, 32 * k, 0, 0, 7); g.fill();
-    g.fillStyle = '#2b1820'; g.beginPath(); g.ellipse(ex + s.look * 5, ey + 6, s.shock ? 9 : 14, s.shock ? 12 : 19, 0, 0, 7); g.fill();
-    g.fillStyle = '#ffffff';
-    g.beginPath(); g.ellipse(ex - 9 + s.look * 5, ey - 10, 9, 11, 0, 0, 7); g.fill();
-    g.beginPath(); g.arc(ex + 10 + s.look * 5, ey + 18, 4.5, 0, 7); g.fill();
-    // 上眼线 + 睫毛
-    g.strokeStyle = '#2b1820'; g.lineWidth = 7; g.lineCap = 'round';
-    g.beginPath(); g.ellipse(ex, ey, 31 * k, 39 * k, 0, 1.15 * Math.PI, 1.85 * Math.PI); g.stroke();
-    g.lineWidth = 5;
-    g.beginPath(); g.moveTo(ex + sx * 26, ey - 28); g.lineTo(ex + sx * 40, ey - 40); g.stroke();
-    g.beginPath(); g.moveTo(ex + sx * 30, ey - 18); g.lineTo(ex + sx * 44, ey - 24); g.stroke();
+    const ew = 84 * k, eh = 112 * k, top = ey - eh / 2;
+    g.fillStyle = '#2e1c16'; g.fillRect(ex - ew / 2, top, ew, eh * 0.58);          // 上半: 深棕
+    g.fillStyle = '#8a4f2e'; g.fillRect(ex - ew / 2, top + eh * 0.58, ew, eh * 0.42); // 下半: 棕色虹膜
+    g.fillStyle = '#2e1c16'; g.fillRect(ex - ew / 2, top + eh - 8, ew, 8);
+    g.fillStyle = '#ffffff'; g.fillRect(ex + 2 + lx, top + 16, 32, 32);             // 大高光
+    g.fillRect(ex - ew / 2 + 10 + lx, top + eh - 34, 16, 16);                        // 小高光
+    // 粗上睫毛 + 眼尾翘起
+    g.fillStyle = '#2a1a14'; g.fillRect(ex - ew / 2 - 14, top - 16, ew + 28, 16);
+    g.fillRect(ex + sx * (ew / 2 + 6) - 8, top - 30, 18, 18);
   }
-  // 眉毛 + 嘴
-  g.strokeStyle = '#6b4134'; g.lineWidth = 6; g.lineCap = 'round';
-  for (const ex of [95, 205]) { g.beginPath(); g.moveTo(ex - 22, s.shock ? 70 : 80); g.quadraticCurveTo(ex, s.shock ? 60 : 72, ex + 22, s.shock ? 70 : 80); g.stroke(); }
-  if (s.shock) { g.fillStyle = '#c8506a'; g.beginPath(); g.ellipse(150, 226, 13, 17, 0, 0, 7); g.fill(); }
-  else { g.strokeStyle = '#d2556f'; g.lineWidth = 7; g.beginPath(); g.arc(150, 206, 20, 0.2 * Math.PI, 0.8 * Math.PI); g.stroke(); }
+  // 嘴: 小方嘴, 吃惊时张大
+  if (s.shock) { g.fillStyle = '#b8405e'; g.fillRect(180, 258, 40, 40); g.fillStyle = '#ff8fab'; g.fillRect(188, 282, 24, 12); }
+  else if (s.smile) { g.fillStyle = '#b8405e'; g.fillRect(176, 262, 48, 14); g.fillRect(172, 254, 10, 10); g.fillRect(218, 254, 10, 10); }
+  else { g.fillStyle = '#b8405e'; g.fillRect(182, 262, 36, 22); g.fillStyle = '#ff8fab'; g.fillRect(190, 274, 20, 10); }
 }
 
 export function makePerson() {
   const root = new THREE.Group();
-  const dress = std('#3fb0a0'), dressDk = std('#2f9384'), skin = std('#f7d3bd'), hair = std('#6b4134'), hairHi = std('#85533f');
-  const white = std('#ffffff'), shoe = std('#f27aa0'), bow = std('#ff7aa6');
-  // 腿 + 鞋
+  const B = (w, h, d, c) => box(w, h, d, c, 0.015);
+  const skin = std('#f8dcc6'), hair = std('#7a4a30'), hairDk = std('#5a3220'), top = std('#d98ca0'), white = std('#ffffff');
+  const tie = std('#ff6f97');
+  const legs = [];
   for (const sx of [-1, 1]) {
-    const l = box(0.2, 0.78, 0.22, skin, 0.06); l.position.set(sx * 0.17, 0.46, 0); root.add(l);
-    const sh = box(0.26, 0.14, 0.34, shoe, 0.05); sh.position.set(sx * 0.17, 0.07, 0.05); root.add(sh);
+    const piv = new THREE.Group(); piv.position.set(sx * 0.13, 0.5, 0); root.add(piv);
+    const l = B(0.16, 0.3, 0.16, skin); l.position.y = -0.15; piv.add(l);
+    const so = B(0.19, 0.12, 0.19, white); so.position.y = -0.3; piv.add(so);
+    const sh = B(0.22, 0.14, 0.3, '#ff7fa0'); sh.position.set(0, -0.43, 0.04); piv.add(sh);
+    legs.push(piv);
   }
-  // 连衣裙: 伞形裙摆 + 上身 + 白领子 + 腰带
-  const skirt = mesh(new THREE.CylinderGeometry(0.42, 0.72, 0.8, 8, 1), dress); skirt.rotation.y = Math.PI / 8; skirt.position.y = 1.15; root.add(skirt);
-  const belt = mesh(new THREE.CylinderGeometry(0.43, 0.43, 0.1, 8, 1), dressDk); belt.rotation.y = Math.PI / 8; belt.position.y = 1.56; root.add(belt);
-  const torso = box(0.78, 0.62, 0.46, dress, 0.12); torso.position.y = 1.9; root.add(torso);
-  for (const sx of [-1, 1]) { const c = box(0.26, 0.1, 0.06, white, 0.03); c.position.set(sx * 0.13, 2.18, 0.23); c.rotation.z = -sx * 0.35; root.add(c); }
-  const neck = box(0.18, 0.14, 0.16, skin, 0.04); neck.position.y = 2.25; root.add(neck);
-  // 手臂: 泡泡袖 + 手臂 + 手
+  // 蛋糕裙: 两层粉 + 白色裙边
+  const hem = B(0.78, 0.06, 0.56, '#fff6ea'); hem.position.y = 0.5; root.add(hem);
+  const sk2 = B(0.74, 0.26, 0.52, '#ff8fae'); sk2.position.y = 0.66; root.add(sk2);
+  const sk1 = B(0.62, 0.2, 0.44, '#ffb3c6'); sk1.position.y = 0.88; root.add(sk1);
+  const torso = mesh(rbox(0.52, 0.4, 0.34, 0.015), top); torso.position.y = 1.16; root.add(torso);
+  const col = B(0.28, 0.06, 0.04, '#ffffff'); col.position.set(0, 1.33, 0.17); root.add(col);
+  for (const sx of [-1, 1]) { const b = B(0.11, 0.09, 0.04, '#b8405e'); b.position.set(sx * 0.065, 1.25, 0.18); root.add(b); }
   const arms = [];
   for (const sx of [-1, 1]) {
-    const piv = new THREE.Group(); piv.position.set(sx * 0.48, 2.12, 0); root.add(piv);
-    const sl = box(0.28, 0.28, 0.3, dress, 0.1); sl.position.y = -0.08; piv.add(sl);
-    const a = box(0.16, 0.62, 0.18, skin, 0.06); a.position.y = -0.48; piv.add(a);
-    const hnd = box(0.18, 0.16, 0.2, skin, 0.06); hnd.position.y = -0.84; piv.add(hnd);
+    const piv = new THREE.Group(); piv.position.set(sx * 0.32, 1.32, 0); root.add(piv);
+    const sl = mesh(rbox(0.18, 0.18, 0.22, 0.015), top); sl.position.y = -0.07; piv.add(sl);
+    const a = B(0.12, 0.3, 0.13, skin); a.position.y = -0.3; piv.add(a);
+    const hd = B(0.14, 0.1, 0.15, skin); hd.position.y = -0.48; piv.add(hd);
     arms.push(piv);
   }
-  // 头 + 脸贴图
-  const headG = new THREE.Group(); headG.position.y = 2.3; root.add(headG);
-  const h = box(0.84, 0.8, 0.76, skin, 0.1); h.position.y = 0.42; headG.add(h);
-  const faceTex = canvasTex(300, 280, () => {});
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.78, 0.73), new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, roughness: 0.6 }));
-  face.position.set(0, 0.4, 0.385); headG.add(face);
-  // 头发: 头顶 + 刘海 + 两侧 + 背后长发 + 发卡蝴蝶结
-  const top = box(0.94, 0.26, 0.86, hair, 0.1); top.position.y = 0.86; headG.add(top);
-  for (let i = 0; i < 4; i++) { const bg_ = box(0.24, 0.2 + (i % 2) * 0.06, 0.1, i % 2 ? hairHi : hair, 0.04); bg_.position.set(-0.33 + i * 0.22, 0.72 - (i % 2) * 0.03, 0.4); headG.add(bg_); }
-  const side = [];
-  for (const sx of [-1, 1]) { const s_ = box(0.14, 0.95, 0.56, hair, 0.06); s_.position.set(sx * 0.48, 0.38, -0.04); headG.add(s_); side.push(s_); }
-  const longHair = box(0.94, 1.35, 0.24, hair, 0.08); longHair.position.set(0, 0.22, -0.38); headG.add(longHair);
-  const tip = box(0.8, 0.2, 0.22, hairHi, 0.08); tip.position.set(0, -0.48, -0.38); headG.add(tip);
-  const bowG = new THREE.Group(); bowG.position.set(0.3, 0.98, 0.18); bowG.rotation.z = -0.3; headG.add(bowG);
-  for (const sx of [-1, 1]) { const w_ = mesh(new THREE.ConeGeometry(0.12, 0.22, 4), bow); w_.rotation.z = sx * Math.PI / 2; w_.position.x = sx * 0.1; bowG.add(w_); }
-  const knot = box(0.08, 0.08, 0.08, bow, 0.02); bowG.add(knot);
-  // 被风吹起的发丝
+  // 大方头
+  const headG = new THREE.Group(); headG.position.y = 1.36; root.add(headG);
+  const hb = B(1.06, 0.96, 0.86, skin); hb.position.y = 0.5; headG.add(hb);
+  const faceTex = canvasTex(400, 360, () => {});
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.9), new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, roughness: 0.7 }));
+  face.position.set(0, 0.46, 0.432); headG.add(face);
+  const hairTop = B(1.14, 0.36, 0.96, hair); hairTop.position.y = 1.0; headG.add(hairTop);
+  const hairBack = B(1.14, 0.95, 0.2, hair); hairBack.position.set(0, 0.55, -0.4); headG.add(hairBack);
+  for (const sx of [-1, 1]) { const sd = B(0.12, 0.55, 0.9, hair); sd.position.set(sx * 0.57, 0.72, -0.02); headG.add(sd); }
+  // 参差的齐刘海
+  [[-0.4, 0.16], [-0.2, 0.1], [0.0, 0.17], [0.2, 0.1], [0.4, 0.15]].forEach(([x, hh]) => {
+    const b = B(0.22, hh, 0.08, hair); b.position.set(x, 0.82 + (0.17 - hh) / 2, 0.45); headG.add(b);
+  });
+  const bangTop = B(1.1, 0.06, 0.08, hair); bangTop.position.set(0, 0.92, 0.45); headG.add(bangTop);
+  // 低双马尾 + 粉发圈
+  const tails = [];
+  for (const sx of [-1, 1]) {
+    const piv = new THREE.Group(); piv.position.set(sx * 0.76, 0.62, -0.02); headG.add(piv);
+    const t1 = B(0.3, 0.5, 0.34, hair); t1.position.y = -0.27; piv.add(t1);
+    const t2 = B(0.26, 0.24, 0.3, hairDk); t2.position.y = -0.62; piv.add(t2);
+    const rg = B(0.34, 0.12, 0.38, tie); rg.position.y = 0.0; piv.add(rg);
+    tails.push(piv);
+    const bw = B(0.12, 0.22, 0.16, tie); bw.position.set(sx * 0.6, 1.02, 0.12); headG.add(bw);
+  }
   const strands = [];
-  for (let i = 0; i < 5; i++) { const s_ = box(0.08, 0.45, 0.08, hair, 0.03); s_.position.set(-0.3 + i * 0.15, 0.95, -0.2); headG.add(s_); strands.push(s_); }
+  for (let i = 0; i < 5; i++) { const s_ = B(0.08, 0.4, 0.08, hair); s_.position.set(-0.3 + i * 0.15, 1.15, -0.2); headG.add(s_); strands.push(s_); }
   root.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  const st = { blink: false, shock: false, look: 0 };
+  const st = { blink: false, shock: false, smile: false, look: 0 };
   return {
-    root, arms,
+    root, arms, head: headG, handY: -0.52,
     update(t, o = {}) {
       root.visible = true;
-      root.position.y = 0.02 * Math.sin(t * 2.4);
-      root.scale.set(1, 1 + 0.008 * Math.sin(t * 2.4), 1);
-      st.blink = (t % 2.9) < 0.12 && !o.shock; st.shock = !!o.shock; st.look = 0.6 * Math.sin(t * 0.7);
+      root.position.y = 0.015 * Math.sin(t * 2.4) + (o.walk ? 0.04 * Math.abs(Math.sin(t * 9)) : 0);
+      st.blink = (t % 2.9) < 0.12 && !o.shock; st.shock = !!o.shock; st.smile = !!o.smile; st.look = o.look ?? 0.6 * Math.sin(t * 0.7);
       drawGirlFace(faceTex.userData.g, st); faceTex.needsUpdate = true;
-      arms[0].rotation.z = o.wave ? -2.5 + 0.35 * Math.sin(t * 8) : -0.1 - 0.03 * Math.sin(t * 2.4);
-      arms[1].rotation.z = o.reach ? 1.25 + 0.1 * Math.sin(t * 6) : 0.1 + 0.03 * Math.sin(t * 2.4);
-      arms[0].rotation.x = 0; arms[1].rotation.x = 0;
-      headG.rotation.set(0, o.headYaw ?? 0.15 * Math.sin(t * 0.8), 0.06 * Math.sin(t * 1.1));
-      bowG.rotation.y = 0.15 * Math.sin(t * 3);
-      longHair.rotation.x = 0.04 * Math.sin(t * 1.7) + (o.blow ? 0.35 + 0.1 * Math.sin(t * 12) : 0);
-      side.forEach((s_, i) => { s_.rotation.z = (o.blow ? 0.4 : 0.03) * Math.sin(t * (o.blow ? 13 : 1.5) + i); });
+      arms[0].rotation.set(0, 0, o.wave ? -2.5 + 0.35 * Math.sin(t * 8) : (o.walk ? 0 : -0.1 - 0.03 * Math.sin(t * 2.4)));
+      arms[1].rotation.set(o.reach ? -1.2 + 0.08 * Math.sin(t * 5) : 0, 0, o.reach ? 0.15 : 0.1 + 0.03 * Math.sin(t * 2.4));
+      if (o.cover) { arms[0].rotation.set(-2.2, 0, -0.35); arms[1].rotation.set(-2.2, 0, 0.35); }
+      if (o.walk) { arms[0].rotation.x = 0.5 * Math.sin(t * 9); if (!o.reach) arms[1].rotation.x = -0.5 * Math.sin(t * 9); }
+      legs.forEach((l, i) => { l.rotation.x = o.walk ? 0.6 * Math.sin(t * 9 + i * Math.PI) : 0; });
+      headG.rotation.set(o.headPitch || 0, o.headYaw ?? 0.15 * Math.sin(t * 0.8), (o.headTilt || 0) + 0.06 * Math.sin(t * 1.1));
+      tails.forEach((p, i) => { const sx = i ? 1 : -1; p.rotation.z = sx * (o.blow ? 0.9 + 0.2 * Math.sin(t * 13 + i) : 0.06 * Math.sin(t * 1.7 + i) + (o.walk ? 0.12 * Math.sin(t * 9) : 0)); p.rotation.x = o.blow ? 0.6 : 0; });
+      hairBack.rotation.x = o.blow ? 0.3 + 0.08 * Math.sin(t * 12) : 0.02 * Math.sin(t * 1.7);
       strands.forEach((s_, i) => { s_.visible = !!o.blow; s_.rotation.z = 1.2 + 0.3 * Math.sin(t * 14 + i); });
     },
   };
 }
 
-// ------------------------------------------------------------------ 奶油色方块狗 (垂耳、伸出的方嘴、会张合的下巴、身上是小骨头和爪印花纹)
-export const DOG = { head: '#fbdcaa', body: '#f7d09a', ear: '#d6955f', earTip: '#b9774a', muzzle: '#fff4e4', nose: '#3a2430',
-                     tongue: '#f27a96', mouth: '#7a2c46', collar: '#ff6f9e', tag: '#ffd34d', paw: '#fff4e4' };
+// ------------------------------------------------------------------ 橘色方块狗 (参考 ref/dog_ref.png: 竖耳粉内耳、白色鼻梁+白嘴套、头顶粉蝴蝶结、方眼白高光)
+export const DOG = { fur: '#f7983c', furDk: '#e07d28', white: '#fffcef', nose: '#2e2018', earIn: '#ff8f9e', bow: '#ffa0b8', bowDk: '#f2708f',
+                     tongue: '#f27a96', mouth: '#7a2c46', collar: '#ff6f9e', tag: '#ffd34d' };
 
 function drawDogFace(g, s) {
-  const w = 520, h = 440; g.clearRect(0, 0, w, h);
-  g.fillStyle = 'rgba(240,110,140,0.7)';                              // 腮红
-  for (const x of [44, 404]) { g.beginPath(); g.roundRect(x, 262, 72, 30, 8); g.fill(); }
-  for (const [ex, sx] of [[150, -1], [370, 1]]) {
-    const ey = 170, lx = s.look * 14, ly = s.lookY * 10;
-    // 柴犬式眉毛豆豆 (心虚时往下撇)
-    g.fillStyle = '#d99a62'; g.save(); g.translate(ex + sx * 8, ey - 98 + (s.eyes === 'half' ? 16 : 0) - (s.eyes === 'big' ? 14 : 0));
-    g.rotate(s.eyes === 'half' ? -sx * 0.35 : 0); g.beginPath(); g.roundRect(-30, -12, 60, 24, 10); g.fill(); g.restore();
+  const w = 500, h = 460; g.clearRect(0, 0, w, h);
+  g.fillStyle = DOG.white; g.fillRect(204, 96, 92, 280);                 // 白色鼻梁
+  g.fillStyle = '#ffa3b6'; g.fillRect(30, 286, 70, 50); g.fillRect(400, 286, 70, 50);  // 方腮红
+  for (const [ex, sx] of [[128, -1], [372, 1]]) {
+    const ey = 180, lx = s.look * 10, ly = s.lookY * 8;
     if (s.eyes === 'happy') {
-      g.strokeStyle = '#1b1218'; g.lineWidth = 22; g.lineCap = 'square';
-      g.beginPath(); g.moveTo(ex - 48, ey + 26); g.lineTo(ex, ey - 22); g.lineTo(ex + 48, ey + 26); g.stroke(); continue;
+      g.fillStyle = '#2e2018';
+      for (let k = -2; k <= 2; k++) g.fillRect(ex + k * 18 - 9, ey - 4 + Math.abs(k) * 16, 18, 18);
+      continue;
     }
-    const big = s.eyes === 'big' ? 1.15 : 1, open = s.open;
-    const ew = 112 * big, eh = 130 * big * open;
+    const big = s.eyes === 'big' ? 1.14 : 1;
+    const ew = 96 * big, eh = 124 * big * s.open;
+    if (eh < 14) { g.fillStyle = '#2e2018'; g.fillRect(ex - ew / 2, ey - 6, ew, 14); continue; }
     let top = ey - eh / 2, hh = eh;
-    if (s.eyes === 'half') { top = ey - 10; hh = 50; }
-    if (hh < 12) { g.fillStyle = '#1b1218'; g.fillRect(ex - ew / 2, ey - 6, ew, 14); continue; }
-    g.fillStyle = '#1b1218'; g.fillRect(ex - ew / 2, top, ew, hh);
-    const hx = s.eyes === 'half' ? lx + 20 * (s.side || 0) : lx;
-    if (s.eyes === 'half') { g.fillStyle = '#ffffff'; g.fillRect(ex - 20 + hx, top + 10, 24, 24); continue; }
-    g.fillStyle = '#d9d9de'; g.fillRect(ex - 40 + hx, top + 16 + ly, 44, 44);
-    g.fillStyle = '#ffffff'; g.fillRect(ex - 40 + hx, top + 16 + ly, 38, 38);
-    g.fillRect(ex + 12 + hx, top + 76 + ly, 22, 22);
-    if (s.shine > 0) { g.globalAlpha = s.shine; g.fillRect(ex + 28 + hx, top + 12, 10, 10); g.globalAlpha = 1; }
+    if (s.eyes === 'half') { top = ey; hh = eh / 2; }
+    g.fillStyle = '#2e2018'; g.fillRect(ex - ew / 2, top, ew, hh);
+    if (s.eyes === 'half') { g.fillStyle = '#fff'; g.fillRect(ex + 16 * (s.side || 0) - 10, top + 10, 20, 20); continue; }
+    g.fillStyle = '#ffffff';
+    // 左眼: 大高光在左上; 右眼: 大高光在右上 (参考图)
+    const bx = sx < 0 ? ex - ew / 2 + 12 : ex + ew / 2 - 46;
+    g.fillRect(bx + lx, top + 12 + ly, 34, 34);
+    g.fillRect((sx < 0 ? ex + ew / 2 - 30 : ex - ew / 2 + 14) + lx, top + eh - 34 + ly, 16, 16);
+    if (s.shine > 0) { g.globalAlpha = 0.8 * s.shine; g.fillRect(bx + 40 + lx, top + 10, 8, 8); g.globalAlpha = 1; }
   }
 }
 
-// 身体花纹: 小骨头 + 爪印
-const boneTex = canvasTex(256, 256, (g, w, h) => {
-  g.fillStyle = DOG.body; g.fillRect(0, 0, w, h);
-  const r = rng(12);
-  const bone = (x, y, a, c) => {
-    g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = c;
-    g.beginPath(); g.roundRect(-16, -5, 32, 10, 4); g.fill();
-    for (const bx of [-16, 16]) for (const by of [-5, 5]) { g.beginPath(); g.arc(bx, by, 6.5, 0, 7); g.fill(); }
-    g.restore();
-  };
-  const paw = (x, y, a, c) => {
-    g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = c;
-    g.beginPath(); g.ellipse(0, 5, 10, 8, 0, 0, 7); g.fill();
-    for (const [tx, ty] of [[-11, -7], [-4, -13], [4, -13], [11, -7]]) { g.beginPath(); g.arc(tx, ty, 4, 0, 7); g.fill(); }
-    g.restore();
-  };
-  const items = [[60, 70, 'bone', '#ffffff'], [190, 60, 'paw', '#e0a06a'], [120, 180, 'bone', '#9fc8f2'], [220, 200, 'paw', '#f59ab4']];
-  for (const [x, y, k, c] of items) {
-    const a = (r() - 0.5) * 1.4;
-    for (const [dx, dy] of [[0, 0], [w, 0], [-w, 0], [0, h], [0, -h]]) (k === 'bone' ? bone : paw)(x + dx, y + dy, a, c);
-  }
-});
-boneTex.wrapS = boneTex.wrapT = THREE.RepeatWrapping;
-
 export function makeDog() {
   const root = new THREE.Group();
-  const bodyMat = std('#ffffff', { map: boneTex });
-  const headMat = std(DOG.head, { emissive: new THREE.Color(DOG.head), emissiveIntensity: 0.12 });
-  const earMat = std(DOG.ear), tipMat = std(DOG.earTip), muz = std(DOG.muzzle), noseM = std(DOG.nose, { roughness: 0.35 });
-  const pawMat = std(DOG.paw), tailMat = std(DOG.body), tongueM = std(DOG.tongue, { roughness: 0.5 });
+  const B = (w, h, d, m) => mesh(rbox(w, h, d, 0.015), m);
+  const fur = std(DOG.fur), furDk = std(DOG.furDk), wh = std(DOG.white), noseM = std(DOG.nose, { roughness: 0.4 });
+  const head = std(DOG.fur, { emissive: new THREE.Color(DOG.fur), emissiveIntensity: 0.08 });
   const bodyPivot = new THREE.Group(); root.add(bodyPivot);
-  const body = mesh(rbox(1.0, 0.8, 1.5, 0.1), bodyMat); body.position.set(0, 0.86, -0.5); bodyPivot.add(body);
+  const body = B(0.96, 0.76, 1.46, fur); body.position.set(0, 0.9, -0.5); bodyPivot.add(body);
+  const chest = B(0.56, 0.42, 0.06, wh); chest.position.set(0, 0.86, 0.24); bodyPivot.add(chest);
   const legs = [];
-  for (const z of [0.1, -1.08]) for (const sx of [-1, 1]) {
-    const piv = new THREE.Group(); piv.position.set(sx * 0.29, 0.62, z); bodyPivot.add(piv);
-    const l = mesh(rbox(0.27, 0.52, 0.3, 0.06), bodyMat); l.position.y = -0.26; piv.add(l);
-    const p = mesh(rbox(0.31, 0.13, 0.36, 0.05), pawMat); p.position.set(0, -0.55, 0.03); piv.add(p);
+  for (const z of [0.08, -1.08]) for (const sx of [-1, 1]) {
+    const piv = new THREE.Group(); piv.position.set(sx * 0.3, 0.62, z); bodyPivot.add(piv);
+    const l = B(0.28, 0.5, 0.3, fur); l.position.y = -0.24; piv.add(l);
+    const p = B(0.3, 0.14, 0.33, wh); p.position.set(0, -0.55, 0.01); piv.add(p);
     legs.push(piv);
   }
-  // 项圈 + 金色名牌
-  const collar = mesh(rbox(0.92, 0.16, 0.78, 0.06), std(DOG.collar)); collar.position.set(0, 1.2, 0.12); bodyPivot.add(collar);
-  const tag = mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.04, 6), std(DOG.tag, { metalness: 0.3, roughness: 0.4 }));
-  tag.rotation.x = Math.PI / 2; tag.position.set(0, 1.04, 0.53); bodyPivot.add(tag);
-  // 尾巴: 往上卷的一节节方块, 会摇
-  const tailBase = new THREE.Group(); tailBase.position.set(0, 1.14, -1.22); bodyPivot.add(tailBase);
+  const collar = B(0.9, 0.14, 0.76, std(DOG.collar)); collar.position.set(0, 1.22, 0.12); bodyPivot.add(collar);
+  const tag = B(0.16, 0.16, 0.05, std(DOG.tag, { metalness: 0.3, roughness: 0.4 })); tag.position.set(0, 1.07, 0.52); bodyPivot.add(tag);
+  // 尾巴: 往上卷, 白尖
+  const tailBase = new THREE.Group(); tailBase.position.set(0, 1.16, -1.22); bodyPivot.add(tailBase);
   const tailSegs = []; { let p = tailBase;
-    for (let i = 0; i < 5; i++) { const s = new THREE.Group(); s.position.y = i ? 0.18 : 0; const ww = 0.2 - i * 0.02;
-      const m = mesh(rbox(ww, 0.23, ww, 0.06), i === 4 ? muz : tailMat); m.position.y = 0.09; s.add(m); p.add(s); p = s; tailSegs.push(s); } }
+    for (let i = 0; i < 4; i++) { const s = new THREE.Group(); s.position.y = i ? 0.18 : 0;
+      const m = B(0.2, 0.22, 0.2, i === 3 ? wh : fur); m.position.y = 0.09; s.add(m); p.add(s); p = s; tailSegs.push(s); } }
   // 头
-  const headPivot = new THREE.Group(); headPivot.position.set(0, 1.22, 0.18); bodyPivot.add(headPivot);
-  const head = mesh(rbox(1.22, 1.0, 0.95, 0.09), headMat); head.position.set(0, 0.44, 0.06); headPivot.add(head);
-  const faceTex = canvasTex(520, 440, () => {});
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(1.14, 0.96), new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, roughness: 0.6 }));
-  face.position.set(0, 0.46, 0.536); headPivot.add(face);
-  // 方嘴筒子 + 鼻子 + 会张合的下巴 + 舌头
-  const snout = new THREE.Group(); snout.position.set(0, 0.2, 0.52); headPivot.add(snout);
-  const up = mesh(rbox(0.58, 0.26, 0.36, 0.07), muz); up.position.set(0, 0.07, 0.16); snout.add(up);
-  const nose = mesh(rbox(0.24, 0.14, 0.1, 0.04), noseM); nose.position.set(0, 0.17, 0.35); snout.add(nose);
-  const inner = mesh(rbox(0.5, 0.12, 0.3, 0.03), std(DOG.mouth)); inner.position.set(0, -0.06, 0.15); snout.add(inner);
+  const headPivot = new THREE.Group(); headPivot.position.set(0, 1.22, 0.16); bodyPivot.add(headPivot);
+  const hb = B(1.26, 1.16, 1.0, head); hb.position.set(0, 0.5, 0.06); headPivot.add(hb);
+  const faceTex = canvasTex(500, 460, () => {});
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(1.26, 1.16), new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, roughness: 0.7 }));
+  face.position.set(0, 0.5, 0.562); headPivot.add(face);
+  // 白嘴套 + 黑鼻子 + 会张合的下巴 + 舌头
+  const snout = new THREE.Group(); snout.position.set(0, 0.06, 0.56); headPivot.add(snout);
+  const up = B(0.66, 0.3, 0.3, wh); up.position.set(0, 0.1, 0.14); snout.add(up);
+  const nose = B(0.24, 0.14, 0.08, noseM); nose.position.set(0, 0.19, 0.3); snout.add(nose);
+  const inner = B(0.56, 0.12, 0.26, std(DOG.mouth)); inner.position.set(0, -0.06, 0.13); snout.add(inner);
   const jaw = new THREE.Group(); jaw.position.set(0, -0.04, 0.0); snout.add(jaw);
-  const low = mesh(rbox(0.52, 0.12, 0.33, 0.05), muz); low.position.set(0, -0.07, 0.15); jaw.add(low);
-  const tongue = mesh(rbox(0.2, 0.04, 0.26, 0.02), tongueM); tongue.position.set(0, -0.0, 0.26); jaw.add(tongue);
-  // 粘在嘴边的棉花 (咬沙发)
+  const low = B(0.58, 0.1, 0.28, wh); low.position.set(0, -0.06, 0.14); jaw.add(low);
+  const tongue = B(0.2, 0.14, 0.05, std(DOG.tongue, { roughness: 0.5 })); tongue.position.set(0, -0.12, 0.26); jaw.add(tongue);
   const fluff = new THREE.Group(); snout.add(fluff);
-  for (const [x, y, z, s] of [[0.24, 0.12, 0.3, 0.14], [-0.2, -0.1, 0.32, 0.12], [0.3, -0.05, 0.22, 0.1], [0.05, 0.27, 0.25, 0.1]]) {
+  for (const [x, y, z, s] of [[0.28, 0.16, 0.3, 0.14], [-0.24, -0.08, 0.3, 0.12], [0.34, -0.04, 0.2, 0.1], [0.06, 0.32, 0.24, 0.1]]) {
     const f = mesh(rbox(s, s, s, s * 0.45), std('#ffffff')); f.position.set(x, y, z); f.rotation.set(x * 3, y * 4, 0.4); fluff.add(f);
   }
-  // 垂耳
+  // 竖耳 (外橘内粉)
   const ears = [];
   for (const sx of [-1, 1]) {
-    const ep = new THREE.Group(); ep.position.set(sx * 0.58, 0.88, 0.06); headPivot.add(ep);
-    const e = mesh(rbox(0.17, 0.58, 0.44, 0.07), earMat); e.position.set(sx * 0.06, -0.24, 0); ep.add(e);
-    const t2 = mesh(rbox(0.18, 0.14, 0.45, 0.06), tipMat); t2.position.set(sx * 0.06, -0.5, 0); ep.add(t2);
+    const ep = new THREE.Group(); ep.position.set(sx * 0.42, 1.06, 0.12); headPivot.add(ep);
+    const e = B(0.32, 0.46, 0.16, fur); e.position.y = 0.21; ep.add(e);
+    const ei = B(0.17, 0.34, 0.04, std(DOG.earIn)); ei.position.set(sx * 0.02, 0.19, 0.08); ep.add(ei);
     ears.push(ep);
   }
+  // 头顶粉色蝴蝶结
+  const bowG = new THREE.Group(); bowG.position.set(0, 1.12, 0.3); headPivot.add(bowG);
+  for (const sx of [-1, 1]) { const w = B(0.24, 0.14, 0.12, std(DOG.bow)); w.position.x = sx * 0.15; bowG.add(w); }
+  const knot = B(0.08, 0.15, 0.13, std(DOG.bowDk)); bowG.add(knot);
   const st = { open: 1, eyes: 'normal', look: 0, lookY: 0, shine: 0, side: 0 };
   root.traverse(o => { if (o.isMesh) o.castShadow = true; });
   return {
     root, bodyPivot, headPivot, snout, jaw, faceTex, st,
-    // o: yaw/pitch/tilt, perk(0..1 竖耳), droop(0..1 耷拉), eyes, look, talk(0..1), wag(0..1), walk, hop, sit, dropY, fluff
+    // o: yaw/pitch/tilt, perk(0..1), droop(0..1 飞机耳), eyes, look, talk(0..1), wag(0..1), walk, hop, sit, dropY, fluff
     update(t, o = {}) {
       root.visible = true;
       const br = Math.sin(t * 2.6) * 0.015;
       bodyPivot.scale.set(1 + br, 1 - br, 1 + br);
       headPivot.rotation.set((o.pitch || 0) + 0.04 * Math.sin(t * 1.9), (o.yaw || 0) + 0.1 * Math.sin(t * 1.1), (o.tilt || 0) + 0.07 * Math.sin(t * 1.6));
-      // 耳朵: 一直轻轻甩 + 时不时抖一下; 兴奋时往外翘, 心虚时贴着脑袋
+      // 耳朵: 一直轻轻转 + 时不时抖一下; 心虚时往后压成飞机耳
       ears.forEach((ep, i) => {
         const sx = i ? 1 : -1;
         const flick = Math.max(0, Math.sin(t * (i ? 2.1 : 1.7) + i * 2.0)) ** 16;
         const perk = o.perk || 0, droop = o.droop || 0;
-        ep.rotation.set(0.12 * Math.sin(t * 1.4 + i) + 0.3 * droop,
-                        sx * 0.1 * Math.sin(t * 1.0 + i),
-                        sx * (0.18 - 0.16 * droop + 0.45 * perk + 0.12 * Math.sin(t * 2.2 + i * 1.3) + 0.35 * flick + (o.talk ? 0.12 * Math.sin(t * 13 + i) : 0)));
+        ep.rotation.set(-1.0 * droop + 0.12 * perk + 0.08 * Math.sin(t * 1.4 + i) - 0.3 * flick,
+                        sx * (0.15 * Math.sin(t * 1.0 + i * 1.7) + 0.35 * flick),
+                        -sx * (0.08 + 0.55 * droop - 0.06 * perk + 0.05 * Math.sin(t * 2.2 + i) + (o.talk ? 0.08 * Math.sin(t * 13 + i) : 0)));
       });
+      bowG.rotation.z = 0.08 * Math.sin(t * 3);
       const walk = o.walk || 0;
-      legs.forEach((l, i) => { l.rotation.x = walk * 0.55 * Math.sin(t * 11 + (i === 0 || i === 3 ? 0 : Math.PI)); });
-      // 尾巴: 竖起来往前卷, 左右摇
+      legs.forEach((l, i) => { l.rotation.x = walk * 0.6 * Math.sin(t * 12 + (i === 0 || i === 3 ? 0 : Math.PI)); });
       const wag = o.wag ?? 0.4;
       tailBase.rotation.set(-0.35, 0, (0.25 + 0.6 * wag) * Math.sin(t * (5 + 12 * wag)));
-      tailSegs.forEach((s, j) => { s.rotation.x = j ? 0.38 : 0; s.rotation.z = 0.15 * wag * Math.sin(t * (5 + 12 * wag) - j * 0.6); });
-      // 下巴: 说话时快速张合, 平时轻轻喘气
+      tailSegs.forEach((s, j) => { s.rotation.x = j ? 0.45 : 0; s.rotation.z = 0.15 * wag * Math.sin(t * (5 + 12 * wag) - j * 0.6); });
       const talk = o.talk || 0;
-      const talkOpen = Math.abs(Math.sin(t * 11)) * (0.6 + 0.4 * Math.sin(t * 3.7)) ;
-      jaw.rotation.x = lerp(0.1 + 0.06 * Math.sin(t * 8), 0.12 + 0.42 * talkOpen, talk);
+      const talkOpen = Math.abs(Math.sin(t * 11)) * (0.6 + 0.4 * Math.sin(t * 3.7));
+      jaw.rotation.x = lerp(0.08 + 0.05 * Math.sin(t * 8), 0.1 + 0.45 * talkOpen, talk);
       fluff.visible = !!o.fluff;
-      // 蹦跳 / 坐下
       const hop = o.hop || 0, sit = o.sit || 0;
       bodyPivot.position.y = hop * Math.abs(Math.sin(t * Math.PI * 1.8)) * 0.35 + (o.dropY || 0) - 0.12 * sit;
       bodyPivot.rotation.x = -0.32 * sit;

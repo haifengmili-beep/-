@@ -23,7 +23,7 @@ function serve() {
   const page = await browser.newPage({ viewport: { width: 540, height: 960 } });
   page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') console.log('[page]', m.text()); });
   page.on('pageerror', e => console.log('[pageerror]', e.message));
-  await page.goto(`http://localhost:${srv.address().port}/web/index.html`);
+  await page.goto(`http://localhost:${srv.address().port}/web/${process.env.PAGE || 'index.html'}`);
   await page.waitForFunction('window.READY === true', null, { timeout: 120000 });
   const tl = JSON.parse(fs.readFileSync(path.join(ROOT, 'timeline.json')));
   const save = async (t, file) => {

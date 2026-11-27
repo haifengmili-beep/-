@@ -94,9 +94,14 @@ const room = new THREE.Group(); scene.add(room);
   const bed = mesh(new THREE.CylinderGeometry(0.75, 0.8, 0.3, 32), std('#9fc8f2'), true, true); bed.position.set(-2.6, 0.15, 0.6); room.add(bed);
   const bedIn = mesh(new THREE.CylinderGeometry(0.58, 0.58, 0.08, 32), std('#fff4e4')); bedIn.position.set(-2.6, 0.28, 0.6); room.add(bedIn);
   // 门 (右墙)
-  const door = box(0.1, 2.6, 1.3, '#f6e3c8', 0.04); door.position.set(3.72, 1.3, 0.2); room.add(door);
-  const knob = mesh(new THREE.SphereGeometry(0.07, 12, 8), std('#ffd34d', { metalness: 0.4, roughness: 0.4 })); knob.position.set(3.64, 1.25, 0.7); room.add(knob);
 }
+// 门 (右墙, 可以打开; 门后是暖光)
+const doorPivot = new THREE.Group(); doorPivot.position.set(3.7, 0, -0.45); room.add(doorPivot);
+{ const door = box(0.1, 2.6, 1.3, '#f6e3c8', 0.04); door.position.set(0, 1.3, 0.65); doorPivot.add(door);
+  const knob = mesh(new THREE.SphereGeometry(0.07, 12, 8), std('#ffd34d', { metalness: 0.4, roughness: 0.4 })); knob.position.set(-0.08, 1.25, 1.15); doorPivot.add(knob);
+  for (const [w, h, z, y] of [[0.14, 2.75, -0.5, 1.37], [0.14, 2.75, 0.9, 1.37], [0.14, 0.14, 0.2, 2.68]]) { const f = box(0.12, h, w, '#ffffff', 0.02); f.position.set(3.7, y, z); room.add(f); } }
+const doorLight = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 2.6), new THREE.MeshBasicMaterial({ color: '#fff3d6' }));
+doorLight.rotation.y = -Math.PI / 2; doorLight.position.set(3.79, 1.3, 0.2); room.add(doorLight);
 // 饭盆 + 狗粮
 const bowl = new THREE.Group(); room.add(bowl);
 { const b = mesh(new THREE.CylinderGeometry(0.36, 0.28, 0.2, 32), std('#7fb6ec')); b.position.y = 0.1; bowl.add(b);
@@ -134,7 +139,7 @@ const dog = makeDog(); scene.add(dog.root);
 dog.jaw.add(leash);
 const cat = makeCat(); scene.add(cat.root);
 const person = makePerson(); scene.add(person.root);
-{ const hand = new THREE.Group(); hand.position.set(0, -0.98, 0.1); person.arms[1].add(hand); hand.add(treat); }
+{ const hand = new THREE.Group(); hand.position.set(0, person.handY - 0.06, 0.08); person.arms[1].add(hand); hand.add(treat); }
 const hearts = []; for (let i = 0; i < 14; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: heartTex, transparent: true, depthWrite: false })); scene.add(s); hearts.push(s); }
 const sparkRoom = makeSparkles(90, [14, 8, 10], '#fff4fa', 0.9, 7, 0.12); scene.add(sparkRoom);
 const petals = makeSparkles(50, [14, 9, 10], '#ff9fc2', 1.1, 11, -0.35); scene.add(petals);
@@ -175,7 +180,7 @@ function bubble(s, tx, ty, age, size = 54, o = {}) {
 const v3 = new THREE.Vector3();
 function proj(obj, off = [0, 0, 0]) { v3.set(...off); obj.localToWorld(v3); v3.project(camera); return [(v3.x + 1) / 2 * W, (1 - v3.y) / 2 * H]; }
 const dogMouth = () => proj(dog.snout, [0.1, 0.35, 0.3]);
-const dogTop = () => { const [x, y] = proj(dog.headPivot, [0.2, 1.05, 0.3]); return [x, Math.min(y, 1000)]; };
+const dogTop = () => { const [x, y] = proj(dog.headPivot, [0.1, 1.4, 0.3]); return [clamp(x, 120, 960), clamp(y, 420, 1000)]; };
 
 function drawHUD(sc, lt, dur) {
   const [, name, s0, s1, , , skill, side, minute] = sc;
@@ -217,11 +222,26 @@ function drawDanmaku(gt) {
   }
 }
 
-// ------------------------------------------------------------------ 每段场景
+// ------------------------------------------------------------------ 分镜
+// 每段拆成 2~3 个镜头: 台词镜头 → 反应镜头 → 包袱特写. 镜头始终在狗与主人连线的同一侧 (180° 规则),
+// 主体放在画面中右 (左边留给 HUD, 下面留给字幕). shot = { t: 开始, p: [起点, 终点], g: [看向起点, 终点], fov }
 let labels = [];
 const L = fn => labels.push(fn);
 const drop = lt => (1 - bounce(lt / 0.7)) * 5;
 const talkIn = (lt, a, b) => (lt > a && lt < b ? 1 : 0);
+const W3 = (obj, off) => { obj.updateMatrixWorld(true); return obj.localToWorld(new THREE.Vector3(...off)).toArray(); };
+const S = (t, p0, p1, g0, g1, fov = 30) => ({ t, p: [p0, p1 || p0], g: [g0, g1 || g0], fov });
+// C: 以焦点为中心, yaw 水平角 (0 = 从 +z 看), pitch 俯仰, 距离 d0→d1; off>0 把主体推到画面右边, lift>0 让主体往下 (头顶留给气泡)
+function C(t, f, yaw, pitch, d0, d1, o = {}) {
+  const [y0, y1] = Array.isArray(yaw) ? yaw : [yaw, yaw], [q0, q1] = Array.isArray(pitch) ? pitch : [pitch, pitch];
+  const off = o.off || 0, lift = o.lift || 0;
+  const mk = (yw, pt, d) => {
+    const g = [f[0] - Math.cos(yw) * off, f[1] + lift, f[2] + Math.sin(yw) * off];
+    return [[g[0] + d * Math.sin(yw) * Math.cos(pt), g[1] + d * Math.sin(pt), g[2] + d * Math.cos(yw) * Math.cos(pt)], g];
+  };
+  const [p0, g0] = mk(y0, q0, d0), [p1, g1] = mk(y1, q1, d1);
+  return { t, p: [p0, p1], g: [g0, g1], fov: o.fov || 30 };
+}
 
 function setup(name, lt, dur, gt) {
   room.visible = true; stage.visible = false; dog.root.visible = false; cat.root.visible = false; person.root.visible = false;
@@ -229,143 +249,190 @@ function setup(name, lt, dur, gt) {
   hearts.forEach(h => h.visible = false);
   dog.root.position.set(0, 0, 0); dog.root.rotation.set(0, 0, 0); dog.root.scale.setScalar(0.85);
   cat.root.position.set(0, 0, 0); cat.root.rotation.set(0, 0, 0); cat.root.scale.setScalar(1);
-  person.root.position.set(0, 0, 0); person.root.rotation.set(0, 0, 0);
-  camera.fov = 30; hemi.color.set('#fff2f6');
+  person.root.position.set(0, 0, 0); person.root.rotation.set(0, 0, 0); person.root.scale.setScalar(1);
+  doorPivot.rotation.y = 0; doorLight.visible = false;
+  hemi.color.set('#fff2f6'); hemi.intensity = 1.5; sun.intensity = 2.3;
   setSky('#79b6f0', '#cfe6fb');
-  let camPos = [0, 2.4, 11.2], camTgt = [0, 1.35, 0];
+  let shots = [S(0, [0, 2.4, 11.2], null, [0, 1.35, 0])];
   switch (name) {
-    case 'title': {
-      dog.root.position.set(0.7, 0, 0.6); dog.root.rotation.y = -0.35;
+    case 'title': {   // 建立镜头: 摇臂从高处落下, 一人一狗的客厅
+      dog.root.position.set(0.75, 0, 0.6); dog.root.rotation.y = -0.4;
       dog.update(gt, { hop: 1, wag: 1, perk: 0.5, yaw: 0.35 * Math.sin(lt * 2), tilt: 0.18 * Math.sin(lt * 2.6) });
-      person.root.position.set(-1.0, 0, 0.1); person.root.rotation.y = 0.35; person.update(lt, { wave: true });
-      camPos = [0, 2.6, 13]; camTgt = [0, 1.6, 0];
+      person.root.position.set(-0.75, 0, 0.3); person.root.rotation.y = 0.4; person.update(lt, { wave: true, smile: true });
+      shots = [C(0, [0, 1.3, 0.4], 0, [0.32, 0.1], 14.5, 11.5)];
       break;
     }
-    case 'm1': {   // 第一句: 饿。 叼着空饭盆
-      dog.root.position.set(-0.35, 0, 0.5); dog.root.rotation.y = 0.25;
-      const said = lt > 0.9;
-      dog.update(gt, { dropY: drop(lt), talk: talkIn(lt, 0.9, 1.4), yaw: said ? 0.35 : 0, pitch: -0.1, wag: 0.5, look: said ? 0.6 : 0 });
-      bowl.visible = true; bowl.position.set(0.55, 0, 1.25); bowl.rotation.z = lt > 1.8 ? 0.06 * Math.sin(lt * 20) : 0;
-      person.root.position.set(1.5, 0, -0.5); person.root.rotation.y = -0.5; person.update(lt, { shock: lt > 1.2, headYaw: -0.3 });
-      L(() => { const [x, y] = dogTop(); bubble('饿。', x, y, lt - 0.9, 80); });
-      L(() => { const [x, y] = proj(bowl, [0, 0.3, 0]); pill('空的！', x, y + 10, 40, ORANGE, '#fff', lt - 1.8); });
-      L(() => { const [x, y] = proj(person.root, [0, 3.6, 0]); pop('它说话了？！', clamp(x, 260, 830), Math.max(y, 330), 56, PINK, lt - 1.3); });
+    case 'm1': {   // A 仰拍狗中近景说“饿。” → B 过狗肩看主人吃惊
+      dog.root.position.set(-0.6, 0, 0.7); dog.root.rotation.y = 0.75;
+      person.root.position.set(1.3, 0, 0.3); person.root.rotation.y = -1.25;
+      bowl.visible = true; bowl.position.set(0.15, 0, 1.6); bowl.rotation.z = lt > 1.2 && lt < 1.7 ? 0.08 * Math.sin(lt * 30) : 0;
+      const B2 = lt >= 1.7;
+      dog.update(gt, { dropY: drop(lt), talk: talkIn(lt, 0.8, 1.3), yaw: B2 ? 0 : -0.5, pitch: -0.08, wag: 0.5, look: B2 ? 0.5 : -0.8 });
+      person.update(lt, { shock: lt > 1.75, headYaw: 0.1, look: -0.5 });
+      const dh = W3(dog.root, [0, 1.75, 0.45]);
+      const gh = W3(person.root, [0, 1.85, 0.3]);
+      shots = [C(0, dh, 0.45, -0.04, 6.0, 5.4, { lift: 0.3 }), C(1.7, gh, -0.45, 0.06, 6.2, 5.7, { lift: 0.1, off: 0.15 })];
+      if (!B2) {
+        L(() => { const [x, y] = dogTop(); bubble('饿。', x, y, lt - 0.8, 88); });
+        L(() => { const [x, y] = proj(bowl, [0, 0.3, 0]); pill('饭盆：空的', clamp(x, 420, 900), y + 30, 40, ORANGE, '#fff', lt - 1.15); });
+      } else L(() => { const [x, y] = proj(person.head, [0, 1.3, 0]); pop('它…说话了？！', clamp(x, 360, 800), Math.max(y, 400), 66, PINK, lt - 1.85); });
       break;
     }
-    case 'm2': {   // 出去玩! 叼着牵引绳
-      dog.root.position.set(-0.2, 0, 0.5); dog.root.rotation.y = 0.15;
+    case 'm2': {   // A 横移跟拍: 狗叼着牵引绳蹦过来 → B 尾巴特写
+      const k = smooth(clamp(lt / 1.6));
+      dog.root.position.set(lerp(-1.9, -0.4, k), 0, 0.8); dog.root.rotation.y = 1.15;
       leash.visible = true;
-      dog.update(gt, { dropY: drop(lt), hop: lt > 0.9 ? 1 : 0, wag: 1, perk: 0.6, talk: talkIn(lt, 0.8, 1.6), yaw: 0.25, look: 0.5 });
-      person.root.position.set(1.5, 0, -0.6); person.root.rotation.y = -0.5; person.update(lt, { headYaw: -0.3, wave: lt > 2.2 });
-      L(() => { const [x, y] = dogTop(); bubble('出去玩！\n现在！', x, y, lt - 0.8, 66); });
-      L(() => { const [x, y] = proj(dog.root, [0, 1.6, -1.4]); pop('摇摇摇', clamp(x - 160, 200, 900), y, 52, ORANGE, lt - 1.4); });
+      dog.update(gt, { dropY: drop(lt), hop: 1, wag: 1, perk: 0.6, talk: talkIn(lt, 0.7, 1.6), yaw: -0.55, look: -0.6 });
+      person.root.position.set(1.4, 0, 0.3); person.root.rotation.y = -1.3; person.update(lt, { headYaw: 0.2, smile: lt > 2.4 });
+      const dx = dog.root.position.x;
+      const tail = W3(dog.bodyPivot, [0, 1.5, -1.25]);
+      const dh = W3(dog.root, [0, 1.75, 0.45]);
+      shots = [C(0, dh, 0.3, 0.06, 7.6, 7.2, { lift: 0.25 }), C(2.0, W3(dog.root, [0, 1.1, -0.5]), 0.3, 0.12, 8.6, 8.0, { lift: 0.1 })];
+      if (lt < 2.0) L(() => { const [x, y] = dogTop(); bubble('出去玩！\n现在！', x, y, lt - 0.7, 66); });
+      else L(() => pop('摇摇摇摇摇', 640, 640 + 12 * Math.sin(gt * 20), 72, ORANGE, lt - 2.1));
       break;
     }
-    case 'm5': {   // 门外有人! 快递
-      dog.root.position.set(0.5, 0, 0.6); dog.root.rotation.y = 0.55;
-      dog.update(gt, { dropY: drop(lt), perk: 1, talk: talkIn(lt, 0.9, 2.4), yaw: lt < 0.9 ? 0.6 : -0.6, pitch: -0.1, look: lt < 0.9 ? 1 : -1, wag: 0.7, eyes: 'big' });
-      parcel.visible = true; parcel.position.set(2.3, (1 - bounce(clamp((lt - 1.6) / 0.7))) * 4, 1.2); parcel.rotation.y = -0.4;
-      person.root.position.set(-1.6, 0, -0.4); person.root.rotation.y = 0.5; person.update(lt, { headYaw: 0.4 });
-      L(() => pop('咚咚咚', 840, 760 + 10 * Math.sin(gt * 30), 64, ORANGE, lt - 0.3));
-      L(() => { const [x, y] = dogTop(); bubble('门外有人！\n是快递！快开门！', x - 80, y, lt - 0.9, 52); });
-      L(() => { const [x, y] = proj(parcel, [0, 0.8, 0]); pill('真的是快递', clamp(x, 200, 900), y, 38, SKY, '#fff', lt - 2.2); });
+    case 'm5': {   // A 门的特写: 咚咚咚 → B 狗猛回头报告
+      doorPivot.rotation.y = lt < 1.0 ? 0.015 * Math.sin(lt * 60) * (lt % 0.33 < 0.12 ? 1 : 0) : 0;
+      dog.root.position.set(1.1, 0, 1.4); dog.root.rotation.y = 0.9;
+      const turned = lt > 1.15;
+      dog.update(gt, { dropY: lt < 1 ? 0 : 0, perk: 1, talk: talkIn(lt, 1.25, 2.6), yaw: turned ? -1.1 : 0.5, pitch: -0.1, look: turned ? -1 : 1, wag: 0.8, eyes: 'big' });
+      person.root.position.set(-0.6, 0, -1.3); person.root.rotation.y = 0.55; person.update(lt, { headYaw: 0.3, shock: lt > 2.6 });
+      parcel.visible = true; parcel.position.set(2.7, (1 - bounce(clamp((lt - 2.0) / 0.7))) * 4, 1.4); parcel.rotation.y = -0.4;
+      shots = [C(0, [3.7, 1.35, 0.2], -0.75, 0.05, 5.4, 4.9), C(1.0, [0.6, 1.3, -0.1], 0.12, 0.1, 9.0, 8.4, { lift: 0.1 })];
+      if (lt < 1.0) L(() => pop('咚 咚 咚', 600, 700 + 10 * Math.sin(gt * 30), 84, ORANGE, lt - 0.15));
+      else {
+        L(() => { const [x, y] = dogTop(); bubble('门外有人！\n是快递！快开门！', x - 120, y, lt - 1.25, 52); });
+        L(() => { const [x, y] = proj(parcel, [0, 0.8, 0]); pill('真的是快递', clamp(x, 420, 900), y, 38, SKY, '#fff', lt - 2.5); });
+      }
       break;
     }
-    case 'm10': {  // 沙发不是我咬的 (嘴边全是棉花)
+    case 'm10': {  // A 案发现场全景 → B 狗心虚否认 → C 推到嘴边: 全是棉花
       mess.visible = true;
       fluffs.forEach(f => { const u = f.userData; f.position.set(u.x + 0.2 * Math.sin(gt * u.sp * 3 + u.ph), 0.4 + ((gt * u.sp + u.ph) % 2.2), u.z); f.rotation.set(gt * u.sp * 2, u.ph, gt * u.sp); });
-      dog.root.position.set(-0.1, 0, 0.6); dog.root.rotation.y = 0.15;
-      dog.update(gt, { dropY: drop(lt), fluff: true, droop: 1, eyes: lt > 0.8 ? 'half' : 'normal', side: Math.sin(lt * 3) > 0 ? 1 : -1,
-                       talk: talkIn(lt, 0.8, 1.7), yaw: -0.35 + 0.15 * Math.sin(lt * 4), tilt: -0.12, wag: 0.15 });
-      person.root.position.set(1.5, 0, -0.6); person.root.rotation.y = -0.5; person.update(lt, { headYaw: -0.3, shock: lt > 1.9 });
-      camPos = [0.2, 2.2, 10.2]; camTgt = [0, 1.3, -0.3];
-      L(() => { const [x, y] = dogTop(); bubble('沙发不是我咬的', x, y, lt - 0.8, 56); });
-      L(() => { const [x, y] = dogMouth(); pill('嘴边：棉花', x + 40, y + 120, 40, PINK, '#fff', lt - 1.9); });
-      L(() => pop('眼神飘忽', 300, 1240, 54, LAV, lt - 2.4));
+      dog.root.position.set(0.1, 0, 0.7); dog.root.rotation.y = 0.05;
+      dog.update(gt, { dropY: lt < 1.0 ? 0 : 0, fluff: true, droop: lt > 1.0 ? 1 : 0, eyes: lt > 1.0 ? 'half' : 'normal', side: Math.sin(lt * 3) > 0 ? 1 : -1,
+                       talk: talkIn(lt, 1.15, 2.1), yaw: -0.3 + 0.15 * Math.sin(lt * 4), tilt: -0.1, wag: 0.15 });
+      person.root.position.set(1.6, 0, -0.6); person.root.rotation.y = -0.7; person.update(lt, { headYaw: -0.2 });
+      const mz = W3(dog.snout, [0, 0.1, 0.3]);
+      const dh = W3(dog.root, [0, 1.75, 0.45]);
+      shots = [C(0, [-0.6, 1.0, -2.3], 0.3, 0.45, 4.6, 4.1), C(1.0, dh, 0.12, 0.05, 6.4, 5.9, { lift: 0.3 }), C(2.3, mz, 0.1, 0.05, 3.3, 2.9)];
+      if (lt < 1.0) L(() => pill('沙发：卒', 640, 620, 52, 'rgba(66,38,63,0.85)', '#fff', lt - 0.3));
+      else if (lt < 2.3) L(() => { const [x, y] = dogTop(); bubble('沙发不是我咬的', x, y, lt - 1.15, 58); });
+      else { L(() => pill('嘴边：棉花', 640, 1250, 50, PINK, '#fff', lt - 2.4)); L(() => pop('证据确凿', 660, 560, 76, LAV, lt - 2.7)); }
       break;
     }
-    case 'm20': {  // 讨价还价
-      dog.root.position.set(-0.45, 0, 0.55); dog.root.rotation.y = 0.45;
-      const sit = smooth((lt - 2.2) / 0.4);
-      dog.update(gt, { dropY: drop(lt), talk: talkIn(lt, 0.8, 1.9), yaw: 0.25, pitch: -0.15, tilt: 0.2 * Math.sin(lt * 2), look: 0.7, lookY: -0.6, wag: 0.6, sit });
-      person.root.position.set(1.3, 0, -0.1); person.root.rotation.y = -0.7; person.update(lt, { reach: true, headYaw: -0.2, shock: lt > 1.2 && lt < 2.2 });
+    case 'm20': {  // A 过主人肩拍狗开条件 → B 反打主人 “一块！” → 狗坐下 “成交”
+      dog.root.position.set(-0.6, 0, 0.9); dog.root.rotation.y = 1.0;
+      person.root.position.set(1.2, 0, 0.3); person.root.rotation.y = -1.35;
+      const sit = smooth((lt - 2.6) / 0.35);
+      dog.update(gt, { dropY: drop(lt), talk: talkIn(lt, 0.7, 1.8), yaw: lt < 2.0 ? -0.15 : 0, pitch: -0.15, tilt: 0.2 * Math.sin(lt * 2), look: 0.2, lookY: -0.5, wag: 0.6, sit });
+      person.update(lt, { reach: true, headYaw: 0, shock: lt > 1.2 && lt < 2.0, smile: lt > 2.8, look: -0.6 });
       treat.visible = true; treat.rotation.set(0, gt * 1.5, 0);
-      L(() => { const [x, y] = dogTop(); bubble('两块零食\n我就坐下', x, y, lt - 0.8, 60); });
-      L(() => { const [x, y] = proj(treat, [0, 0.35, 0]); pop('一块！', clamp(x, 200, 900), y - 20, 58, ORANGE, lt - 1.5); });
-      L(() => { const [x, y] = dogTop(); pill('成交', x, y - 40, 50, MINT, '#fff', lt - 2.4); });
+      const dh = W3(dog.root, [0, 1.75, 0.45]);
+      const gh = W3(person.root, [0, 1.85, 0.3]);
+      shots = [C(0, dh, 1.25, 0.15, 6.4, 6.0, { lift: 0.3, off: -0.2 }), C(2.0, gh, -0.45, 0.06, 6.2, 5.7, { lift: 0.1, off: 0.15 })];
+      if (lt < 2.0) L(() => { const [x, y] = dogTop(); bubble('两块零食\n我就坐下', x, y, lt - 0.7, 62); });
+      else {
+        L(() => { const [x, y] = proj(person.head, [0, 1.3, 0]); pop('一块！', clamp(x, 400, 860), Math.max(y, 420), 76, ORANGE, lt - 2.1); });
+        L(() => pill('狗：成交', 700, 1330, 56, MINT, '#fff', lt - 2.85));
+      }
       break;
     }
-    case 'm30': {  // 告猫的状
-      vase.visible = true; vase.position.set(0.3, 0, 1.3);
-      dog.root.position.set(-0.9, 0, 0.4); dog.root.rotation.y = 0.35;
-      dog.update(gt, { dropY: drop(lt), talk: talkIn(lt, 0.7, 1.8), yaw: 0.5 * smooth((lt - 0.6) / 0.3), perk: 0.5, wag: 0.5, look: 1 });
-      cat.root.position.set(1.2, 0, 0.3); cat.root.rotation.y = -0.55; cat.root.scale.setScalar(0.85);
-      cat.update(gt, { ears: lt > 1.0 ? 1 : 0, mouth: lt > 1.0 ? 'o' : 'w', yaw: lt > 1.0 ? -0.4 : 0.1, eyes: lt > 2.3 ? 'half' : 'normal', look: -1, tails: { mode: 'single' } });
-      person.root.position.set(0.1, 0, -1.6); person.update(lt, { headYaw: 0.25 * Math.sin(lt * 3) });
-      L(() => { const [x, y] = dogTop(); bubble('花瓶是猫推倒的！', x + 60, y, lt - 0.7, 52); });
-      L(() => { const [x, y] = proj(cat.headPivot, [0, 1.4, 0]); pop('喵？！', clamp(x, 200, 900), y, 66, PINK, lt - 1.2); });
-      L(() => { const [x, y] = proj(vase, [0, 0.4, 0]); pill('案发现场', x, y + 40, 38, 'rgba(66,38,63,0.8)', '#fff', lt - 1.9); });
+    case 'm30': {  // A 二人镜头: 狗对着镜头(主人)告状 → B 猫的反应特写 → C 证据插入
+      vase.visible = true; vase.position.set(0.25, 0, 1.6);
+      dog.root.position.set(-0.4, 0, 0.6); dog.root.rotation.y = 0.35;
+      dog.update(gt, { dropY: drop(lt), talk: talkIn(lt, 0.6, 1.6), yaw: lt < 1.6 ? -0.25 : 0.5, perk: 0.5, wag: 0.5, look: lt < 1.6 ? 0 : 1 });
+      cat.root.position.set(0.85, 0, 0.45); cat.root.rotation.y = -0.55; cat.root.scale.setScalar(0.85);
+      const accused = lt > 1.6;
+      cat.update(gt, { ears: accused ? 1 : 0, mouth: accused ? 'o' : 'w', yaw: accused ? 0.35 : -0.2, eyes: lt > 2.6 ? 'half' : 'normal', look: accused ? 0 : -1, tails: { mode: 'single' } });
+      const ch = W3(cat.headPivot, [0, 0.45, 0.4]);
+      shots = [C(0, [0.25, 1.05, 0.6], 0.05, 0.12, 9.6, 9.0, { lift: 0.15, off: 0.15 }), C(1.6, ch, -0.3, 0.05, 4.4, 4.0, { lift: 0.25 }), C(2.6, [0.25, 0.25, 1.6], 0.2, 0.42, 3.4, 3.0)];
+      if (lt < 1.6) L(() => { const [x, y] = dogTop(); bubble('花瓶是猫推倒的！', x + 80, y, lt - 0.6, 54); });
+      else if (lt < 2.6) L(() => pop('喵？！', 660, 560, 110, PINK, lt - 1.7));
+      else L(() => pill('案发现场', 640, 1240, 48, 'rgba(66,38,63,0.85)', '#fff', lt - 2.65));
       break;
     }
-    case 'm45': {  // 话痨: 气泡一个接一个
-      dog.root.position.set(-0.6, 0, 0.5); dog.root.rotation.y = 0.5;
-      dog.update(gt, { talk: 1, hop: 0.5, wag: 1, perk: 0.8, yaw: 0.3 + 0.2 * Math.sin(lt * 5), tilt: 0.15 * Math.sin(lt * 4), eyes: 'big', look: 0.8, dropY: drop(lt) });
-      person.root.position.set(1.4, 0, -0.2); person.root.rotation.y = -0.6; person.update(lt, { shock: true, blow: true, headYaw: -0.2 });
-      camPos = [0, 2.4, 10.6];
+    case 'm45': {  // 高潮: 狗 / 主人 近景快切, 最后拉成二人全景, 主人捂耳朵
+      dog.root.position.set(-0.35, 0, 0.7); dog.root.rotation.y = 0.8;
+      person.root.position.set(1.15, 0, 0.3); person.root.rotation.y = -1.3;
+      dog.update(gt, { talk: 1, hop: 0.5, wag: 1, perk: 0.8, yaw: -0.2 + 0.2 * Math.sin(lt * 5), tilt: 0.15 * Math.sin(lt * 4), eyes: 'big', look: 0.6 });
+      person.update(lt, { shock: true, blow: true, headYaw: 0.05, cover: lt > 2.5 });
+      const dh = W3(dog.root, [0, 1.75, 0.45]);
+      const gh = W3(person.root, [0, 1.85, 0.3]);
+      const A = C(0, dh, 0.5, 0.0, 5.2, 4.8, { lift: 0.2 }), B = C(0, gh, -0.45, 0.03, 5.4, 5.0, { lift: 0.2, off: 0.15 });
+      shots = [0, 0.6, 1.1, 1.55, 1.95].map((t, i) => ({ ...(i % 2 ? B : A), t }));
+      shots.push(C(2.35, [0.35, 1.3, 0.5], -0.2, 0.12, 9.0, 10.5, { lift: 0.1, off: 0.2 }));
       const lines = [['你去哪了？', 640, 640], ['跟谁玩了？', 880, 820], ['身上怎么有\n别的狗的味道？', 620, 1060], ['明天还出门吗？', 660, 1230],
-                     ['带我去！', 270, 1330], ['我数了，你出门\n整整八个小时！', 780, 1420]];
-      lines.forEach(([s, x, y], i) => L(() => bubble(s, x, y, lt - 0.25 - i * 0.48, 46, { gap: 30 })));
+                     ['带我去！', 330, 1330], ['我数了，你出门\n整整八个小时！', 780, 1420]];
+      lines.forEach(([s, x, y], i) => L(() => bubble(s, x, y, lt - 0.2 - i * 0.45, 46, { gap: 30 })));
       break;
     }
-    case 'why': {
+    case 'why': {  // 科普: 紫色舞台, 镜头慢慢环绕
       room.visible = false; stage.visible = true; stage.material.color.set('#c7b2f0'); setSky('#a98ae0', '#d8c6f6');
-      dog.root.scale.setScalar(1); dog.root.rotation.y = 0.5 * Math.sin(lt * 0.7);
+      dog.root.scale.setScalar(1); dog.root.rotation.y = 0.3 * Math.sin(lt * 0.7);
       dog.update(gt, { dropY: drop(lt), yaw: -0.4 * Math.sin(lt * 1.3), tilt: 0.25 * Math.sin(lt * 1.9), look: Math.sin(lt * 1.3), perk: 0.3, wag: 0.5 });
       ['边牧Chaser记住了1000多个玩具名', '狗脑会同时听“词义”和“语气”', '但它的喉咙和舌头说不出人话', '所以它用尾巴、耳朵和叫声说话']
         .forEach((s, i) => L(() => pill(s, 540, 290 + i * 116, 38, '#ffffff', INK, lt - 0.3 - i * 0.7)));
-      camPos = [0, 2.1, 9.2]; camTgt = [0, 1.3, 0];
+      const a0 = -0.35, a1 = 0.3;
+      shots = [S(0, [9.2 * Math.sin(a0), 2.1, 9.2 * Math.cos(a0)], [9.2 * Math.sin(a1), 2.1, 9.2 * Math.cos(a1)], [0, 1.3, 0])];
       break;
     }
-    case 'back': {   // 主人回家: 45句话都忘了, 只剩一句
-      const w = clamp((lt - 0.3) / 1.6);
-      dog.root.position.set(lerp(-1.8, 0.2, smooth(w)), 0, lerp(1.0, 0.5, w)); dog.root.rotation.y = lerp(1.2, 0.6, w);
-      dog.update(gt, { eyes: w >= 1 ? 'happy' : 'big', walk: w < 1 ? 1 : 0, hop: w >= 1 ? 0.6 : 0, wag: 1, perk: 0.7, yaw: 0.2, pitch: -0.2 * w, talk: talkIn(lt, 2.0, 2.8) });
-      person.root.position.set(1.5, 0, -0.1); person.root.rotation.y = -0.7; person.update(lt, { headYaw: 0.2, reach: lt > 2.6, wave: lt < 1.5 });
+    case 'back': {  // A 狗守在门口的背影, 门开了透出暖光 → B 主人视角: 狗的脸亮起来 → C 暖色二人全景
       hemi.color.set('#ffe6d6');
-      // 之前学的话往上飘走
-      [['你去哪了？', 300], ['两块零食', 520], ['沙发不是我咬的', 780], ['门外有人！', 420], ['花瓶是猫推的', 680]].forEach(([s, x], i) => L(() => {
-        const a = clamp(1 - (lt - 0.6 - i * 0.12) / 1.0); if (a <= 0) return;
-        ctx.globalAlpha = a; pill(s, x, 1180 - (lt * 260 + i * 70) % 900, 34, 'rgba(255,255,255,0.85)', INK, lt - i * 0.1); ctx.globalAlpha = 1;
-      }));
-      L(() => { const [x, y] = dogTop(); bubble('你回来啦！', x, y, lt - 2.0, 76, { bg: '#fff3f7', line: PINK, fg: PINK }); });
-      if (lt > 2.4) hearts.forEach((h, i) => { h.visible = true; const u = ((lt - 2.4) * 0.45 + i / 14) % 1; h.position.set(0.7 + Math.sin(i * 2.1) * 1.6 + 0.2 * Math.sin(lt * 2 + i), 1 + u * 3.5, 0.5 + Math.cos(i) * 0.5); h.scale.setScalar(0.35 * Math.sin(Math.PI * u) + 0.01); });
-      camPos = [0.2, 2.4, 10.8]; camTgt = [0.2, 1.35, 0];
+      const open = smooth((lt - 0.35) / 0.6);
+      doorPivot.rotation.y = -1.25 * open; doorLight.visible = open > 0.01;
+      const walkIn = smooth(clamp((lt - 0.6) / 1.6));
+      person.root.position.set(lerp(4.3, 2.7, walkIn), 0, lerp(0.25, 0.7, walkIn)); person.root.rotation.y = -Math.PI / 2;
+      person.update(lt, { walk: walkIn > 0 && walkIn < 1, smile: true, reach: lt > 3.0, headYaw: 0, look: 0 });
+      const run = smooth(clamp((lt - 2.6) / 0.6));
+      dog.root.position.set(lerp(0.2, 1.0, run), 0, 1.0); dog.root.rotation.y = Math.PI / 2 - 0.15;
+      dog.update(gt, { eyes: lt > 2.0 ? 'happy' : 'big', sit: 1 - smooth((lt - 0.5) / 0.4), walk: run > 0 && run < 1 ? 1 : 0, hop: lt > 3.2 ? 0.6 : 0,
+                       wag: lt > 0.6 ? 1 : 0.1, perk: lt > 0.6 ? 0.9 : 0, droop: lt < 0.5 ? 0.5 : 0, yaw: 0, pitch: -0.15, talk: talkIn(lt, 1.9, 2.6) });
+      const dh = W3(dog.root, [0, 1.75, 0.45]);
+      shots = [C(0, [3.6, 1.3, 0.3], -1.2, 0.12, 7.2, 6.7), C(1.3, dh, 0.75, 0.08, 5.0, 4.6, { lift: 0.3 }), C(2.6, [1.55, 1.3, 0.95], 0.9, 0.12, 7.0, 6.2, { lift: 0.15, off: 0.45 })];
+      if (lt < 1.3) L(() => pill('它在门口等了一整天', 640, 520, 46, 'rgba(66,38,63,0.85)', '#fff', lt - 0.1));
+      if (lt >= 1.3) {
+        [['你去哪了？', 300], ['两块零食', 520], ['沙发不是我咬的', 760], ['门外有人！', 420], ['花瓶是猫推的', 680]].forEach(([s, x], i) => L(() => {
+          const u = lt - 1.3 - i * 0.1, a = clamp(1 - u / 1.1); if (a <= 0 || u < 0) return;
+          ctx.globalAlpha = a; pill(s, x, 1250 - u * 520 - i * 60, 36, 'rgba(255,255,255,0.9)', INK, u + 0.3); ctx.globalAlpha = 1;
+        }));
+        L(() => { const [x, y] = dogTop(); bubble('你回来啦！', x, y, lt - 1.95, 80, { bg: '#fff3f7', line: PINK, fg: PINK }); });
+      }
+      if (lt > 2.6) hearts.forEach((h, i) => { h.visible = true; const u = ((lt - 2.6) * 0.45 + i / 14) % 1; h.position.set(1.8 + Math.sin(i * 2.1) * 1.3 + 0.2 * Math.sin(lt * 2 + i), 1 + u * 3.2, 0.6 + Math.cos(i) * 0.6); h.scale.setScalar(0.32 * Math.sin(Math.PI * u) + 0.01); });
       break;
     }
-    case 'end': {
+    case 'end': {  // 粉色舞台: 一人一狗贴在一起
       room.visible = false; stage.visible = true; stage.material.color.set('#f9b6cd'); setSky('#f597bc', '#ffd0e0');
-      dog.root.scale.setScalar(0.75); dog.root.rotation.y = 0.3 * Math.sin(lt * 1.2);
-      dog.update(gt, { hop: 0.6, eyes: 'happy', wag: 1, perk: 0.5, yaw: 0.4 * Math.sin(lt * 2), tilt: 0.15 * Math.sin(lt * 2.5) });
-      camPos = [0, 1.8, 8.6]; camTgt = [0, 2.0, 0];
+      dog.root.scale.setScalar(0.72); dog.root.position.set(0.55, 0, 0.3); dog.root.rotation.y = -0.35 + 0.15 * Math.sin(lt * 1.2);
+      dog.update(gt, { hop: 0.5, eyes: 'happy', wag: 1, perk: 0.5, yaw: -0.3 + 0.2 * Math.sin(lt * 2), tilt: 0.15 * Math.sin(lt * 2.5) });
+      person.root.scale.setScalar(0.8); person.root.position.set(-0.6, 0, 0.1); person.root.rotation.y = 0.35;
+      person.update(lt, { smile: true, wave: true, headTilt: 0.12 });
+      hearts.forEach((h, i) => { h.visible = true; const u = (lt * 0.4 + i / 14) % 1; h.position.set(Math.sin(i * 2.1) * 1.8, 0.6 + u * 3.0, 0.3 + Math.cos(i) * 0.4); h.scale.setScalar(0.25 * Math.sin(Math.PI * u) + 0.01); });
+      shots = [S(0, [0, 1.5, 8.8], [0, 1.5, 8.0], [0, 2.15, 0])];
       break;
     }
   }
-  camera.updateProjectionMatrix();
-  return { camPos, camTgt };
+  let k = 0; while (k < shots.length - 1 && lt >= shots[k + 1].t) k++;
+  const s = shots[k], end = k < shots.length - 1 ? shots[k + 1].t : dur, st = lt - s.t, u = clamp(st / (end - s.t));
+  camera.fov = s.fov; camera.updateProjectionMatrix();
+  return { camPos: s.p[0].map((v, j) => lerp(v, s.p[1][j], u)), camTgt: s.g[0].map((v, j) => lerp(v, s.g[1][j], u)), shot: k, st, sd: end - s.t };
 }
 
-const SHAKE = { m45: 0.03 };
+const SHAKE = { m45: 0.025 };
 window.renderAt = (gt) => {
   let i = SCENES.length - 1; while (i > 0 && gt < STARTS[i]) i--;
   const sc = SCENES[i], name = sc[1], dur = sc[0], lt = gt - STARTS[i];
   labels = [];
-  const { camPos, camTgt } = setup(name, lt, dur, gt);
-  // 镜头: 冲进去回弹 + 慢推 + 手持晃动
-  const push = 1 - 0.06 * (lt / dur) - 0.14 * (1 - back(lt / 0.45));
+  const { camPos, camTgt, shot, st, sd } = setup(name, lt, dur, gt);
+  // 镜头: 每段第一镜冲进去回弹, 段内切镜轻一点的推进; 之后缓慢推 + 手持晃动
+  const push = 1 - 0.04 * (st / sd) - (shot === 0 ? 0.14 : 0.06) * (1 - back(st / 0.4));
   const sh = SHAKE[name] || 0;
   const dir = new THREE.Vector3(...camPos).sub(new THREE.Vector3(...camTgt));
+  const dist = dir.length();
   const pos = new THREE.Vector3(...camTgt).add(dir.multiplyScalar(push));
-  pos.x += 0.16 * Math.sin(lt * 0.9 + i) + sh * Math.sin(gt * 53); pos.y += 0.08 * Math.sin(lt * 1.3 + i * 2) + sh * Math.cos(gt * 47);
+  const amp = 0.014 * dist;
+  pos.x += amp * Math.sin(lt * 0.9 + i) + sh * Math.sin(gt * 53); pos.y += amp * 0.5 * Math.sin(lt * 1.3 + i * 2) + sh * Math.cos(gt * 47);
   camera.position.copy(pos); camera.lookAt(...camTgt);
   camera.updateMatrixWorld();
   sparkRoom.material.uniforms.uTime.value = gt; petals.material.uniforms.uTime.value = gt;
@@ -382,11 +449,11 @@ window.renderAt = (gt) => {
   if (name === 'end') {
     const a = smooth(lt / 0.8);
     ctx.globalAlpha = a;
-    txt('它每天都在跟你说话', 540, 520, 66, '#ffffff', '#c23f74', 12);
-    txt('只是用尾巴说', 540, 615, 66, '#ffffff', '#c23f74', 12);
-    txt('你家狗最想对你说什么？', 540, 735, 56, INK, '#ffffff', 10);
+    txt('它每天都在跟你说话', 540, 470, 66, '#ffffff', '#c23f74', 12);
+    txt('只是用尾巴说', 540, 565, 66, '#ffffff', '#c23f74', 12);
+    txt('你家狗最想对你说什么？', 540, 685, 56, INK, '#ffffff', 10);
     ctx.globalAlpha = clamp((lt - 1) / 0.4);
-    txt('评论区告诉我 ↓', 540, 840, 58, '#a2285e', '#ffffff', 10);
+    txt('评论区告诉我 ↓', 540, 790, 58, '#a2285e', '#ffffff', 10);
     ctx.globalAlpha = 1;
   }
   drawHUD(sc, lt, dur);
