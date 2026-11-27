@@ -6,7 +6,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { clamp, smooth, lerp, back, bounce, rng, canvasTex, std, rbox, mesh, box, heartTex, makeSparkles,
-         makeCat, makePerson, makeDog, makeBone, makeBubble } from './lib.js';
+         makeCat, makeMom, makeDog, makeBone, makeBubble } from './lib.js';
 
 const W = 1080, H = 1920;
 const FONT = '"WenQuanYi Zen Hei", sans-serif';
@@ -23,7 +23,7 @@ const SCENES = [
   [3.4, 'rain', 5, 10, '第10分钟：天上下骨头雨\n这就是狗狗的天堂', "Minute 10: It's raining bones. Doggy heaven.", '第10分钟', '骨头雨', '口水流成河', '+5 个梦'],
   [3.8, 'stack', 10, 60, '第60分钟：60个梦连轴转\n睡一觉比醒着还累', 'Minute 60: Sixty dreams back to back. Sleeping is harder work than being awake.', '第60分钟', '全都要', '小床被蹬跑了', '+50 个梦'],
   [4.8, 'why', 0, 0, '狗真的会做梦：它们也有快速眼动睡眠\n睡着时蹬腿、哼唧，很可能就在做梦', 'Dogs really do dream: they have REM sleep too. Twitching paws and whimpers often mean a dream.', '', '', '', ''],
-  [4.8, 'back', 60, 60, '它梦得最多的，可能就是白天和你玩的事\n醒来第一件事：来找你', 'What it dreams about most may be its day with you. First thing after waking: find you.', '醒了', '你', '摇着尾巴找你', '梦见你'],
+  [4.8, 'back', 60, 60, '它梦得最多的，可能就是白天和妈妈玩的事\n醒来第一件事：去找妈妈', 'What it dreams about most may be its day with Mom. First thing after waking: find Mom.', '醒了', '妈妈', '摇着尾巴找妈妈', '梦见妈妈'],
   [3.6, 'end', 0, 0, '', '', '', '', '', ''],
 ];
 const STARTS = []; { let a = 0; for (const s of SCENES) { STARTS.push(a); a += s[0]; } }
@@ -169,8 +169,8 @@ const clouds = [], farGroup = new THREE.Group(); dream.add(farGroup);
 // ------------------------------------------------------------------ 角色 + 道具
 const dog = makeDog(); scene.add(dog.root);
 const cat = makeCat(); scene.add(cat.root);
-const person = makePerson(); scene.add(person.root);
-const personMini = makePerson();
+const person = makeMom(); scene.add(person.root);
+const personMini = makeMom();
 const bubbles = [makeBubble(0.85), ...Array.from({ length: 5 }, () => makeBubble(0.62))];
 bubbles.forEach(b => scene.add(b.root));
 const trail = [0.07, 0.11, 0.16].map(r => { const b = makeBubble(r); scene.add(b.root); return b; });
@@ -187,7 +187,7 @@ const makeSausage = () => mk(g => { const s = mesh(new THREE.CapsuleGeometry(0.1
 // 主泡泡里的东西
 const bigBone = makeBone(0.9); bubbles[0].inner.add(bigBone);
 const dreamBall = makeBall(); bubbles[0].inner.add(dreamBall);
-personMini.root.scale.setScalar(0.3); bubbles[0].inner.add(personMini.root);
+const miniG = new THREE.Group(); miniG.scale.setScalar(0.34); miniG.add(personMini.root); bubbles[0].inner.add(miniG);
 // 60 个梦: 其他泡泡
 [makeBall(), makeFrisbee(), makeSlipper(), makeSausage()].forEach((p, i) => bubbles[i + 1].inner.add(p));
 const frisbee = makeFrisbee(); scene.add(frisbee);
@@ -418,17 +418,17 @@ function setup(name, lt, dur, gt) {
       break;
     }
     case 'back': {     // 梦里是你 -> 醒来跑去找你
-      person.root.position.set(2.1, 0, 0.9); person.root.rotation.y = -0.9;
+      person.root.position.set(2.35, 0, 0.9); person.root.rotation.y = -1.0;
       if (lt < 2.2) {
         sleepDog(gt, { wag: 0.9, paddle: 0.2 });
         showBubble(bubbles[0], ...BUB, lt - 0.2, gt, true);
-        personMini.root.visible = true; personMini.root.position.set(0, -0.5, 0); personMini.update(gt, { wave: true });
+        personMini.root.visible = miniG.visible = true; miniG.position.set(0, -0.5, 0); personMini.update(gt, { wave: true });
         person.update(lt, { headYaw: -0.2 });
-        L(() => { const [x, y] = proj(bubbles[0].root, [0, 1.0, 0]); pill('梦里都是你', x, y - 10, 44, PINK, '#fff', lt - 0.6); });
-        camPos = [0.6, 3.3, 15]; camTgt = [0.5, 1.75, 0];
+        L(() => { const [x, y] = proj(bubbles[0].root, [0, 1.0, 0]); pill('梦里都是妈妈', x, y - 10, 44, PINK, '#fff', lt - 0.6); });
+        camPos = [0.9, 3.3, 15.5]; camTgt = [0.8, 1.75, 0];
       } else {
         const u = lt - 2.2, wake = smooth(u / 0.4), w = smooth((u - 0.5) / 1.2);
-        dog.root.position.set(lerp(DOG_BED.x, 1.05, w), lerp(0.22, 0, w), lerp(DOG_BED.z, 1.1, w)); dog.root.rotation.y = lerp(DOG_BED.ry, 1.2, smooth((u - 0.3) / 0.6));
+        dog.root.position.set(lerp(DOG_BED.x, 0.15, w), lerp(0.22, 0, w), lerp(DOG_BED.z, 1.0, w)); dog.root.rotation.y = lerp(DOG_BED.ry, 1.2, smooth((u - 0.3) / 0.6));
         dog.update(gt, { lie: 1 - wake, eyes: u < 0.35 ? 'sleep' : 'happy', walk: u > 0.5 && w < 1 ? 1 : 0, hop: w >= 1 ? 0.5 : 0,
           wag: 1, tongue: u > 0.6, perk: 0.4, pitch: -0.2 * w, yaw: 0.2 * w });
         person.update(lt, { reach: w > 0.6, headYaw: -0.1 });
@@ -436,7 +436,7 @@ function setup(name, lt, dur, gt) {
         hearts.forEach((h, i) => { if (u < 0.8) return; h.visible = true; const q = ((u - 0.8) * 0.45 + i / 14) % 1;
           h.position.set(1.4 + Math.sin(i * 2.1) * 1.6 + 0.2 * Math.sin(lt * 2 + i), 1 + q * 3.5, 0.8 + Math.cos(i) * 0.5); h.scale.setScalar(0.35 * Math.sin(Math.PI * q) + 0.01); });
         L(() => { if (u > 0.2) { const [x, y] = proj(dog.headPivot, [0, 1.3, 0]); pop('醒啦！', clamp(x, 470, 880), y - 20, 66, '#ee7a3c', u - 0.2); } });
-        camPos = [0.9, 2.8, 14.5]; camTgt = [0.9, 1.6, 0];
+        camPos = [1.3, 2.8, 14.5]; camTgt = [1.25, 1.6, 0];
       }
       break;
     }
@@ -484,7 +484,7 @@ window.renderAt = (gt) => {
   if (name === 'end') {
     const a = smooth(lt / 0.8);
     ctx.globalAlpha = a;
-    txt('今晚，它大概又会梦见你', 540, 560, 66, '#ffffff', '#c23f74', 12);
+    txt('今晚，它大概又会梦见妈妈', 540, 560, 66, '#ffffff', '#c23f74', 12);
     txt('你家狗睡觉会蹬腿吗？', 540, 690, 58, INK, '#ffffff', 10);
     ctx.globalAlpha = clamp((lt - 1) / 0.4);
     txt('评论区告诉我 ↓', 540, 800, 58, '#a2285e', '#ffffff', 10);

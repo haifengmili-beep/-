@@ -553,3 +553,88 @@ export function makeBubble(r = 1) {
   hl.position.set(-r * 0.45, r * 0.5, r * 0.75); hl.scale.set(1, 0.6, 1); hl.rotation.z = 0.6; hl.renderOrder = 3; g.add(hl);
   return { root: g, inner, mat, r };
 }
+
+// ------------------------------------------------------------------ 妈妈 (照用户给的方块女生参考图: 大方块棕色头发 + 像素粉爱心发饰, 粉色发圈,
+// 灰粉上衣, 两层粉色蓬蓬裙 + 白边, 粉鞋子; 脸和小狗同款方眼白高光 + 粉方腮红)
+function pixelHeart(px, color) {
+  const g = new THREE.Group(), m = std(color), rows = ['0110110', '1111111', '1111111', '0111110', '0011100', '0001000'];
+  rows.forEach((r, y) => [...r].forEach((c, x) => { if (c === '1') { const b = mesh(rbox(px, px, px, px * 0.15), m); b.position.set((x - 3) * px, (2.5 - y) * px, 0); g.add(b); } }));
+  return g;
+}
+function drawMomFace(g, s) {
+  const w = 300, h = 280; g.clearRect(0, 0, w, h);
+  g.fillStyle = '#ffa3bd'; for (const x of [22, 236]) g.fillRect(x, 168, 42, 26);
+  for (const ex of [92, 208]) {
+    const ey = 128, ink = '#3a2420';
+    if (s.blink) { g.fillStyle = ink; g.fillRect(ex - 26, ey + 4, 52, 9); continue; }
+    const k = s.shock ? 1.18 : 1, ew = 50 * k, eh = 62 * k, lx = s.look * 5;
+    g.fillStyle = ink; g.fillRect(ex - ew / 2, ey - eh / 2, ew, eh);
+    g.fillStyle = '#ffffff'; g.fillRect(ex - ew / 2 + 7 + lx, ey - eh / 2 + 7, 15, 17); g.fillRect(ex + ew / 2 - 17 + lx, ey + eh / 2 - 17, 9, 9);
+    g.fillStyle = ink; g.fillRect(ex + (ex < 150 ? -ew / 2 - 8 : ew / 2 - 4), ey - eh / 2 - 6, 12, 8);   // 睫毛
+  }
+  if (s.shock) { g.fillStyle = '#c8506a'; g.fillRect(136, 196, 28, 30); }
+  else { g.fillStyle = '#d2556f'; g.fillRect(132, 200, 36, 9); g.fillRect(126, 192, 9, 10); g.fillRect(165, 192, 9, 10); }
+}
+export function makeMom() {
+  const root = new THREE.Group(), R = 0.025;
+  const skin = std('#f6d6c0'), hair = std('#8a5236'), hairDk = std('#6e3e28'), top = std('#d48a9c');
+  const skirtA = std('#ffb8d0'), skirtB = std('#ff9bbd'), white = std('#ffffff'), shoe = std('#ff86ab'), tie = std('#e0507c');
+  for (const sx of [-1, 1]) {
+    const l = mesh(rbox(0.18, 0.42, 0.2, R), skin); l.position.set(sx * 0.15, 0.38, 0); root.add(l);
+    const s = mesh(rbox(0.25, 0.2, 0.32, R), shoe); s.position.set(sx * 0.15, 0.1, 0.03); root.add(s);
+  }
+  const hem = mesh(rbox(0.9, 0.06, 0.66, 0.01), white); hem.position.y = 0.6; root.add(hem);
+  const sk1 = mesh(rbox(0.86, 0.28, 0.62, R), skirtB); sk1.position.y = 0.76; root.add(sk1);
+  const sk2 = mesh(rbox(0.72, 0.24, 0.52, R), skirtA); sk2.position.y = 1.0; root.add(sk2);
+  const torso = mesh(rbox(0.6, 0.42, 0.42, R), top); torso.position.y = 1.32; root.add(torso);
+  const arms = [];
+  for (const sx of [-1, 1]) {
+    const piv = new THREE.Group(); piv.position.set(sx * 0.38, 1.48, 0); root.add(piv);
+    const sl = mesh(rbox(0.2, 0.2, 0.24, R), top); sl.position.y = -0.06; piv.add(sl);
+    const a = mesh(rbox(0.14, 0.36, 0.16, R), skin); a.position.y = -0.3; piv.add(a);
+    const hd = mesh(rbox(0.16, 0.14, 0.18, R), skin); hd.position.y = -0.52; piv.add(hd);
+    arms.push(piv);
+  }
+  const headG = new THREE.Group(); headG.position.y = 1.52; root.add(headG);
+  const face = mesh(rbox(1.0, 0.9, 0.86, R), skin); face.position.y = 0.45; headG.add(face);
+  const faceTex = canvasTex(300, 280, () => {});
+  const fp = new THREE.Mesh(new THREE.PlaneGeometry(0.96, 0.9), new THREE.MeshStandardMaterial({ map: faceTex, transparent: true, roughness: 0.7 }));
+  fp.position.set(0, 0.36, 0.432); headG.add(fp);
+  // 头发: 后面一大块 + 头顶 + 刘海 + 两侧一层层往下
+  const back = mesh(rbox(1.14, 1.12, 0.52, R), hair); back.position.set(0, 0.48, -0.24); headG.add(back);
+  const crown = mesh(rbox(1.14, 0.28, 1.0, R), hair); crown.position.set(0, 0.98, 0.0); headG.add(crown);
+  const bang = mesh(rbox(1.02, 0.2, 0.1, R), hair); bang.position.set(0, 0.84, 0.45); headG.add(bang);
+  for (const [x, w_] of [[-0.3, 0.2], [0.05, 0.16], [0.32, 0.2]]) { const b = mesh(rbox(w_, 0.12, 0.1, R), hairDk); b.position.set(x, 0.7, 0.45); headG.add(b); }
+  const sides = [];
+  for (const sx of [-1, 1]) {
+    const s1 = mesh(rbox(0.14, 0.86, 0.7, R), hair); s1.position.set(sx * 0.57, 0.46, -0.02); headG.add(s1);
+    const s2 = mesh(rbox(0.2, 0.42, 0.42, R), hair); s2.position.set(sx * 0.62, -0.08, -0.12); headG.add(s2);
+    const s3 = mesh(rbox(0.16, 0.18, 0.3, R), hairDk); s3.position.set(sx * 0.62, -0.36, -0.14); headG.add(s3);
+    const tie_ = mesh(rbox(0.12, 0.2, 0.22, R), tie); tie_.position.set(sx * 0.66, 0.2, -0.05); headG.add(tie_);
+    sides.push(s2, s3);
+  }
+  const hb = pixelHeart(0.045, '#ff7aa0'); hb.position.set(0.25, 0.72, -0.505); hb.rotation.y = Math.PI; headG.add(hb);   // 背后的像素爱心
+  const hf = pixelHeart(0.035, '#ff7aa0'); hf.position.set(-0.32, 0.98, 0.42); hf.rotation.z = 0.3; headG.add(hf);         // 前面的爱心发卡
+  const floatHeart = pixelHeart(0.05, '#ff6f9e'); root.add(floatHeart);                                                     // 头旁边飘的小爱心
+  root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  const st = { blink: false, shock: false, look: 0 };
+  return {
+    root,
+    update(t, o = {}) {
+      root.visible = true;
+      root.position.y = 0.02 * Math.sin(t * 2.4);
+      root.scale.set(1, 1 + 0.008 * Math.sin(t * 2.4), 1);
+      st.blink = (t % 2.9) < 0.12 && !o.shock; st.shock = !!o.shock; st.look = 0.6 * Math.sin(t * 0.7);
+      drawMomFace(faceTex.userData.g, st); faceTex.needsUpdate = true;
+      arms[0].rotation.z = o.wave ? -2.5 + 0.35 * Math.sin(t * 8) : -0.1 - 0.03 * Math.sin(t * 2.4);
+      arms[1].rotation.z = o.reach ? 1.25 + 0.1 * Math.sin(t * 6) : 0.1 + 0.03 * Math.sin(t * 2.4);
+      arms[0].rotation.x = 0; arms[1].rotation.x = 0;
+      headG.rotation.set(0, o.headYaw ?? 0.15 * Math.sin(t * 0.8), 0.06 * Math.sin(t * 1.1));
+      sk1.rotation.y = 0.05 * Math.sin(t * 2.0); sk2.rotation.y = -0.04 * Math.sin(t * 2.0 + 1);
+      sides.forEach((s_, i) => { s_.rotation.x = 0.06 * Math.sin(t * 1.7 + i) + (o.blow ? 0.4 + 0.1 * Math.sin(t * 12 + i) : 0); });
+      hf.rotation.y = 0.2 * Math.sin(t * 3);
+      const u = (t * 0.5) % 1;
+      floatHeart.position.set(-0.95, 2.3 + 0.5 * u, 0.1); floatHeart.scale.setScalar(Math.sin(Math.PI * u) + 0.01); floatHeart.rotation.y = 0.4 * Math.sin(t * 2);
+    },
+  };
+}
